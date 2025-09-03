@@ -119,6 +119,17 @@ fi
 #
 #-----------------------------------------------------------------------
 #
+#
+unset PYTHONPATH
+unset LD_LIBRARY_PATH
+#CONDA_BASE="/gpfs/f6/bil-fire10-oar/world-shared/mhu/miniconda"
+CONDA_BASE="/ncrc/home1/Johana.Romero-Alvarez/miniconda"
+source "${CONDA_BASE}/etc/profile.d/conda.sh"
+conda activate "${CONDA_BASE}/envs/interpol_esmpy"
+echo "Python interpreter being used:"
+which python
+echo "-----------------------------------"
+
 python -u  ${USHdir}/generate_fire_emissions.py \
   "${FIX_SMOKE_DUST}/${PREDEF_GRID_NAME}" \
   "${fire_rave_dir_work}" \

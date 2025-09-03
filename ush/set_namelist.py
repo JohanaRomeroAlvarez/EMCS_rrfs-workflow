@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+#!/scratch1/BMC/acomp/Johana/miniconda/envs/interpol_esmpy/bin/python
 '''
 This utility updates a Fortran namelist file using the f90nml package. The
 settings that are modified are supplied via command line YAML-formatted string
@@ -66,10 +65,11 @@ Expected behavior:
       in the supported configs.
 '''
 
+
 import argparse
 import collections
 import os
-
+os.system('conda list')
 import f90nml
 import yaml
 

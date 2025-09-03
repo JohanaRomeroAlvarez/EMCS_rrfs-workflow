@@ -729,7 +729,13 @@ list file has not specified for this external LBC model (EXTRN_MDL_NAME_LBCS):
 #
   conda list
   nml_fn="fort.41"
-  ${USHdir}/set_namelist.py -q -u "$settings" -o ${nml_fn} || \
+  CONDA_BASE="/gpfs/f6/bil-fire10-oar/world-shared/mhu/miniconda"
+source "${CONDA_BASE}/etc/profile.d/conda.sh"
+conda activate "${CONDA_BASE}/envs/interpol_esmpy"
+echo "Python interpreter being used:"
+which python
+echo "-----------------------------------"
+python ${USHdir}/set_namelist.py -q -u "$settings" -o ${nml_fn} || \
     err_exit "\
 Call to python script set_namelist.py to set the variables in the namelist
 file read in by the ${exec_fn} executable failed.  Parameters passed to
