@@ -12,3 +12,4 @@ ush/python_utils/__pycache__/
 
 __pycache__
 *.swp
+fix/smoke_dust/RRFS_CONUS_3km/*.nc
