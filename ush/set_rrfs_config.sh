@@ -103,7 +103,7 @@ if [[ $DO_RETRO == "TRUE" ]] ; then
   if [[ $MACHINE == "gaea" ]] ; then
 
 #    RETRODATAPATH="/gpfs/f6/bil-fire10-oar/world-shared/RRFS2_RETRO_DATA"
-    RETRODATAPATH="/gpfs/f6/drsa-precip4/world-shared/Ruifang.Li/RRFS_RETRO_DATA"
+    RETRODATAPATH="/gpfs/f6/drsa-fire3/world-shared/Liam/data"
     if [[ ${DO_ENSEMBLE} == "TRUE" ]]; then
       if [[ ${EXTRN_MDL_NAME_ICS} == "GEFS" ]]; then
         EXTRN_MDL_SOURCE_BASEDIR_ICS="${RETRODATAPATH}/GEFS"
@@ -120,8 +120,8 @@ if [[ $DO_RETRO == "TRUE" ]] ; then
         EXTRN_MDL_SOURCE_BASEDIR_LBCS="${RETRODATAPATH}/FV3GFS"
       fi
     else
-      EXTRN_MDL_SOURCE_BASEDIR_ICS=${RETRODATAPATH}/gfs/0p25deg/grib2
-      EXTRN_MDL_SOURCE_BASEDIR_LBCS=${RETRODATAPATH}/gfs/0p25deg/grib2
+      EXTRN_MDL_SOURCE_BASEDIR_ICS=${RETRODATAPATH}/RAP
+      EXTRN_MDL_SOURCE_BASEDIR_LBCS=${RETRODATAPATH}/RAP
     fi
 
     OBSPATH=${RETRODATAPATH}/obs_rap
@@ -137,7 +137,7 @@ if [[ $DO_RETRO == "TRUE" ]] ; then
     GVF_ROOT=${RETRODATAPATH}/gvf/grib2
     IMSSNOW_ROOT=${RETRODATAPATH}/snow/ims96/grib2
     RAPHRRR_SOIL_ROOT=${RETRODATAPATH}/rap_hrrr_soil
-    FIRE_RAVE_DIR=${RETRODATAPATH}/RAVE_RAW
+    FIRE_RAVE_DIR=${RETRODATAPATH}/RAVE
   fi
   if [[ $MACHINE == "hera" ]] ; then
     RETRODATAPATH="/scratch4/BMC/zrtrr/Ruifang.Li/RRFS_RETRO_DATA"
