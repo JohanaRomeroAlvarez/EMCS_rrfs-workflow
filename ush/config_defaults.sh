@@ -1625,6 +1625,9 @@ SFC_CLIMO_FIELDS=( \
 # FIX_SMOKE_DUST
 # directory in which the smoke and dust fix files are located
 #
+# SMOKE_CYCLE_INTERVAL
+# set cycling interval for smoke for GSL retros when spin up is not run, integer values
+#
 # FIX_BUFRSND
 # directory in which the bufrsnd fix files are located
 #
@@ -2307,6 +2310,9 @@ USE_HOST_ENKF="TRUE"
 # DO_SMOKE_DUST:
 # Flag turn on smoke and dust for RRFS-SD
 #
+# SMOKE_RESEARCH
+# Flag turn use smoke research cycling capabilities
+#
 # EBB_DCYCLE:
 # 1: for retro, 2: for forecast
 #
@@ -2327,6 +2333,8 @@ DO_RADDA="FALSE"
 DO_BUFRSND="FALSE"
 USE_RRFSE_ENS="FALSE"
 DO_SMOKE_DUST="FALSE"
+SMOKE_RESEARCH="FALSE"
+SMOKE_CYCLE_INTERVAL="1"
 EBB_DCYCLE="2"
 DO_PM_DA="FALSE"
 USE_CLM="FALSE"

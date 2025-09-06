@@ -689,6 +689,71 @@ if [ "${DO_SMOKE_DUST}" = "TRUE" ] && [ "${CYCLE_TYPE}" = "spinup" ]; then  # cy
       fi
   fi
 fi
+############# Smoke cycling for smoke research no spinup ################################################
+if [ "${DO_SMOKE_DUST}" = "TRUE" ] && [ "${DO_RETRO}" = "TRUE" ] && [ "${SMOKE_RESEARCH}" = "TRUE" ]; then 
+      surface_file_dir_name=fcst_fv3lam
+      bkpath_find="missing"
+      restart_prefix_find="missing"
+      if [ "${bkpath_find}" = "missing" ]; then
+          restart_prefix=$( date +%Y%m%d.%H0000. -d "${START_DATE}" )
+
+          offset_hours=${SMOKE_CYCLE_INTERVAL}
+          YYYYMMDDHHmInterv=$( date +%Y%m%d%H -d "${START_DATE} ${offset_hours} hours ago" )
+          bkpath=${fg_root}/${YYYYMMDDHHmInterv}${SLASH_ENSMEM_SUBDIR}/${surface_file_dir_name}/RESTART
+
+          n=${SMOKE_CYCLE_INTERVAL}
+          while [[ $n -le 25 ]] ; do
+             if [ "${IO_LAYOUT_Y}" = "1" ]; then
+               checkfile=${bkpath}/${restart_prefix}fv_tracer.res.tile1.nc
+             else
+               checkfile=${bkpath}/${restart_prefix}fv_tracer.res.tile1.nc.0000
+             fi
+             if [ -r "${checkfile}" ] && [ "${bkpath_find}" = "missing" ]; then
+               bkpath_find=${bkpath}
+               restart_prefix_find=${restart_prefix}
+               print_info_msg "$VERBOSE" "Found ${checkfile}; Use it for smoke/dust cycle "
+               break
+             fi
+             n=$((n + ${SMOKE_CYCLE_INTERVAL}))
+             offset_hours=${n}
+             YYYYMMDDHHmInterv=$( date +%Y%m%d%H -d "${START_DATE} ${offset_hours} hours ago" )
+             bkpath=${fg_root}/${YYYYMMDDHHmInterv}${SLASH_ENSMEM_SUBDIR}/${surface_file_dir_name}/RESTART  # cycling, use background from RESTART
+             print_info_msg "$VERBOSE" "Trying this path: ${bkpath}"
+          done
+      fi
+
+      # cycle smoke/dust
+      rm -f cycle_smoke_dust.done
+      if [ "${bkpath_find}" = "missing" ]; then
+        print_info_msg "Warning: cannot find smoke/dust files from previous cycle"
+      else
+        if [ "${IO_LAYOUT_Y}" = "1" ]; then
+          checkfile=${bkpath_find}/${restart_prefix_find}fv_tracer.res.tile1.nc
+          if [ -r "${checkfile}" ]; then
+            ncks -A -v smoke,dust,coarsepm ${checkfile}  fv_tracer.res.tile1.nc
+          fi
+        else
+          for ii in ${list_iolayout}
+          do
+            iii=$(printf %4.4i $ii)
+            checkfile=${bkpath_find}/${restart_prefix_find}fv_tracer.res.tile1.nc.${iii}
+            if [ -r "${checkfile}" ]; then
+              ncks -A -v smoke,dust,coarsepm ${checkfile}  fv_tracer.res.tile1.nc.${iii}
+            fi
+          done
+        fi
+        echo "${YYYYMMDDHH}(${CYCLE_TYPE}): cycle smoke/dust from ${checkfile} " >> ${EXPTDIR}/log.cycles
+      fi
+
+unset PYTHONPATH
+unset LD_LIBRARY_PATH
+CONDA_BASE="/gpfs/f6/bil-fire10-oar/world-shared/mhu/miniconda"
+PY="${CONDA_BASE}/envs/interpol_esmpy/bin/python"
+echo "-----------------------------------"
+${PY} ${USHdir}/add_smoke.py
+
+fi     
+#
 #
 #-----------------------------------------------------------------------
 #
