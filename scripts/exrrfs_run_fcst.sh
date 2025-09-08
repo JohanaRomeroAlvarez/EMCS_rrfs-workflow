@@ -393,10 +393,25 @@ if [ "${DO_SMOKE_DUST}" = "TRUE" ]; then
   fi
   echo "try to use smoke file=",${smokefile}
   if [ -f ${smokefile} ]; then
-    ln -snf ${smokefile} ${run_dir}/INPUT/SMOKE_RRFS_data.nc
-  else
-    ln -snf ${FIX_SMOKE_DUST}/${PREDEF_GRID_NAME}/dummy_24hr_smoke.nc ${run_dir}/INPUT/SMOKE_RRFS_data.nc
-    echo "WARNING: Smoke file is not available, use dummy_24hr_smoke.nc instead"
+    cp "${smokefile}" "${run_dir}/INPUT/SMOKE_RRFS_data_${yyyymmddhh}00.nc"
+    dir_fmc=/gpfs/f6/drsa-fire3/scratch/Johana.Romero-Alvarez/park_fire_retros/intp_fmc
+    cp ${dir_fmc}/interpolated_fmc_${yyyymmddhh}.nc ${run_dir}/INPUT/interpolated_fmc_${yyyymmddhh}.nc
+    cd ${run_dir}/INPUT/
+    ncks -v  fmc_hr ${run_dir}/INPUT/interpolated_fmc_${yyyymmddhh}.nc -o ${run_dir}/INPUT/temp_variable.nc
+    ncks -A ${run_dir}/INPUT/temp_variable.nc ${run_dir}/INPUT/SMOKE_RRFS_data_${yyyymmddhh}00.nc
+    ln -snf ${run_dir}/INPUT/SMOKE_RRFS_data_${yyyymmddhh}00.nc ${run_dir}/INPUT/SMOKE_RRFS_data.nc
+    rm -f interpolated_fmc_${yyyymmddhh}.nc
+    rm -f temp_variable.nc
+      else
+    if [ ${EBB_DCYCLE} = "1" ]; then
+       ln -snf ${FIX_SMOKE_DUST}/${PREDEF_GRID_NAME}/dummy_24hr_smoke_ebbdc1.nc ${run_dir}/INPUT/SMOKE_RRFS_data.nc
+       echo "WARNING: Smoke file is not available, use dummy_24hr_smoke_ebbdc1.nc instead"
+    elif [ "${EBB_DCYCLE}" = "2" ] && [ "${HWP_ALPHA}" != "0.0" ]; then
+       ln -snf ${FIX_SMOKE_DUST}/${PREDEF_GRID_NAME}/dummy_6hr_smoke.nc ${run_dir}/INPUT/SMOKE_RRFS_data.nc
+    else
+       ln -snf ${FIX_SMOKE_DUST}/${PREDEF_GRID_NAME}/dummy_24hr_smoke.nc ${run_dir}/INPUT/SMOKE_RRFS_data.nc
+       echo "WARNING: Smoke file is not available, use dummy_24hr_smoke.nc instead"
+    fi
   fi
 fi
 #
