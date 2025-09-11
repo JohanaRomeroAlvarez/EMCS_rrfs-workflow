@@ -57,6 +57,7 @@ export rave_nwges_dir=${NWGES_DIR}/RAVE_INTP
 mkdir -p "${rave_nwges_dir}"
 export hourly_hwpdir=${NWGES_BASEDIR}/HOURLY_HWP
 mkdir -p "${hourly_hwpdir}"
+ebb_dc=${EBB_DCYCLE}
 #
 #-----------------------------------------------------------------------
 #
@@ -84,8 +85,16 @@ smokeFile=SMOKE_RRFS_data_${YYYYMMDDHH}00.nc
 
 for i in $(seq 0 $(($nfiles - 1)) )
 do
-   timestr=`date +%Y%m%d%H -d "$previous_day + $i hours"`
-   intp_fname=${PREDEF_GRID_NAME}_intp_${timestr}00_${timestr}59.nc
+   if [ "$ebb_dc" -eq 2 ]; then
+      # For ebb_dc == 2
+      timestr=`date +%Y%m%d%H -d "$previous_day + $i hours"`
+      intp_fname=${PREDEF_GRID_NAME}_intp_${timestr}00_${timestr}59.nc
+   else
+       # For ebb_dc == 1	   
+      timestr=`date +%Y%m%d%H -d "$current_day $current_hh + $i hours"`
+      intp_fname=${PREDEF_GRID_NAME}_intp_${timestr}00_${timestr}59.nc
+   fi
+
    if  [ -f ${rave_nwges_dir}/${intp_fname} ]; then
       ${LN} -sf ${rave_nwges_dir}/${intp_fname} ${workdir}/${intp_fname}
       echo "${rave_nwges_dir}/${intp_fname} interoplated file available to reuse"
@@ -112,6 +121,45 @@ else
    fire_rave_dir_work=${FIRE_RAVE_DIR}
 fi
 
+# Check whether the RAVE files need to be split into hourly files
+# Format the current day and hour properly for UTC
+#
+if [ "$ebb_dc" -eq 1 ]; then
+    ddhh_to_use="${current_day}${current_hh}"
+    dd_to_use="${current_day}"
+else
+    ddhh_to_use="${previous_day}${prev_hh}"
+    dd_to_use="${previous_day}"
+fi
+
+# Construct file names and check their existence
+intp_fname="${fire_rave_dir_work}/RAVE-HrlyEmiss-3km_v2r0_blend_s${ddhh_to_use}00000_e${dd_to_use}23*"
+intp_fname_beta="${fire_rave_dir_work}/Hourly_Emissions_3km_${ddhh_to_use}00_${dd_to_use}23*"
+
+echo "Checking for files in directory: $fire_rave_dir_work"
+
+# Find files matching the specified patterns
+files_found=$(find "$fire_rave_dir_work" -type f \( -name "${intp_fname##*/}" -o -name "${intp_fname_beta##*/}" \))
+
+if [ -z "$files_found" ]; then
+    echo "No files found matching patterns."
+else
+    echo "Files found, proceeding with processing..."
+    for file_to_use in $files_found; do
+        echo "Using file: $file_to_use"
+        for hour in {00..23}; do
+            output_file="${fire_rave_dir_work}/Hourly_Emissions_3km_${dd_to_use}${hour}00_${dd_to_use}${hour}00.nc"
+            if [ -f "$output_file" ]; then
+                echo "Output file for hour $hour already exists: $output_file. Skipping..."
+                continue
+            fi
+            echo "Splitting data for hour $hour..."
+            ncks -d time,$hour,$hour "$file_to_use" "$output_file"
+        done
+        echo "Hourly files processing completed for: $file_to_use"
+    done
+fi
+
 #
 #-----------------------------------------------------------------------
 #
@@ -135,7 +183,10 @@ python -u  ${USHdir}/generate_fire_emissions.py \
   "${fire_rave_dir_work}" \
   "${workdir}" \
   "${PREDEF_GRID_NAME}" \
-  "${EBB_DCYCLE}" 
+  "${EBB_DCYCLE}" \
+  "${RESTART_INTERVAL}" \
+  "${RAVE_QA_FILTER}" 
+
 export err=$?; err_chk
 
 #Copy the the hourly, interpolated RAVE data to $rave_nwges_dir so it
@@ -149,6 +200,37 @@ for file in ${workdir}/*; do
 done
 
 echo "Copy RAVE interpolated files completed"
+
+# Check if all files in the rave_nwges_dir are older than 5 days
+if are_all_files_older_than_15_days "${rave_nwges_dir}"; then
+    echo "All files are older than 5 days. Replacing all files."
+
+    # Loop through all files in the work directory and replace them in rave_nwges_dir
+    for file in ${workdir}/*; do
+        filename=$(basename "$file")
+        target_file="${rave_nwges_dir}/${filename}"
+
+        cp "${file}" "${target_file}"
+        echo "Copied file: $filename"
+    done
+else
+    echo "Not all files are older than 5 days. Checking individual files."
+
+    # Loop through all files in the work directory
+    for file in ${workdir}/*; do
+        filename=$(basename "$file")
+        target_file="${rave_nwges_dir}/${filename}"
+
+        # Check if the file matches the pattern or is missing in the target directory
+        if [[ "$filename" =~ SMOKE_RRFS_data_.*\.nc ]]; then
+            cp "${file}" "${target_file}"
+            echo "Copied file: $filename"
+        elif [ ! -f "${target_file}" ]; then
+            cp "${file}" "${target_file}"
+            echo "Copied missing file: $filename"
+        fi
+    done
+fi
 
 #
 #-----------------------------------------------------------------------

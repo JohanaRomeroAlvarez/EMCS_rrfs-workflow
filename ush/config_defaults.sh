@@ -1628,6 +1628,9 @@ SFC_CLIMO_FIELDS=( \
 # SMOKE_CYCLE_INTERVAL
 # set cycling interval for smoke for GSL retros when spin up is not run, integer values
 #
+# RAVE_QA_FILTER
+# if TRUE set lower confidence RAVE values to zero
+#
 # FIX_BUFRSND
 # directory in which the bufrsnd fix files are located
 #
@@ -2334,6 +2337,7 @@ DO_BUFRSND="FALSE"
 USE_RRFSE_ENS="FALSE"
 DO_SMOKE_DUST="FALSE"
 SMOKE_RESEARCH="FALSE"
+RAVE_QA_FILTER="FALSE"
 SMOKE_CYCLE_INTERVAL="1"
 EBB_DCYCLE="2"
 DO_PM_DA="FALSE"
