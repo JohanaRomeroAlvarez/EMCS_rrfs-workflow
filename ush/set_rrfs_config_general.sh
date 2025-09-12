@@ -31,7 +31,7 @@ if [[ $MACHINE == "jet" ]] ; then
   fi
 
 elif [[ $MACHINE == "gaea" ]] ; then
-  ACCOUNT="bil-fire10-oar"
+  ACCOUNT="drsa-fire3"
   PARTITION_DEFAULT="batch"
   PARTITION_FCST="batch"
   PARTITION_HPSS="batch"
@@ -244,7 +244,7 @@ if [[ ${PREDEF_GRID_NAME} == "RRFS_CONUS_3km" ]] ; then
   elif [[ $MACHINE == "gaea" ]] ; then
 
     LAYOUT_X=15
-    LAYOUT_Y=20
+    LAYOUT_Y=40
 
     PPN_MAKE_ICS="96"
     PPN_BLEND_ICS="96"
@@ -254,9 +254,12 @@ if [[ ${PREDEF_GRID_NAME} == "RRFS_CONUS_3km" ]] ; then
     NNODES_MAKE_LBCS="2"
     PPN_RUN_ANALYSIS="96"
     NNODES_RUN_ANALYSIS="1"
-    PPN_RUN_FCST="160"
-    NNODES_RUN_FCST="2"
+    PPN_RUN_FCST="40"
+    NNODES_RUN_FCST="19"
     TPP_RUN_FCST="1"
+    NCORES_PER_NODE="40"
+    PPN_RUN_FCST="40"
+    WRTCMP_write_tasks_per_group="160"
     PPN_RUN_POST="92"
     NNODES_RUN_POST="1"
     PPN_PROC_RADAR="40"

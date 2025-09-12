@@ -580,6 +580,9 @@ settings="\
 #
   'do_smoke_dust': ${DO_SMOKE_DUST}
   'ebb_dcycle'   : ${EBB_DCYCLE}
+  'smoke_cycle_interval_hrs' : ${SMOKE_CYCLE_INTERVAL}
+  'smoke_research': ${SMOKE_RESEARCH}
+  'rave_qa_filter': ${RAVE_QA_FILTER}
 #
 # PM related parameters.
 #

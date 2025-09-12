@@ -1390,7 +1390,7 @@ QUILTING="TRUE"
 PRINT_ESMF="FALSE"
 
 WRTCMP_write_groups="1"
-WRTCMP_write_tasks_per_group="20"
+WRTCMP_write_tasks_per_group="760"
 WRTCMP_output_file="netcdf"
 WRTCMP_zstandard_level="0"
 WRTCMP_ideflate="0"
@@ -1625,6 +1625,12 @@ SFC_CLIMO_FIELDS=( \
 # FIX_SMOKE_DUST
 # directory in which the smoke and dust fix files are located
 #
+# SMOKE_CYCLE_INTERVAL
+# set cycling interval for smoke for GSL retros when spin up is not run, integer values
+#
+# RAVE_QA_FILTER
+# if TRUE set lower confidence RAVE values to zero
+#
 # FIX_BUFRSND
 # directory in which the bufrsnd fix files are located
 #
@@ -1858,7 +1864,7 @@ NNODES_MAKE_ICS="4"
 NNODES_BLEND_ICS="1"
 NNODES_MAKE_LBCS="4"
 NNODES_RUN_PREPSTART="1"
-NNODES_RUN_FCST=""  # This is calculated in the workflow generation scripts, so no need to set here.
+NNODES_RUN_FCST="19"  # This is calculated in the workflow generation scripts, so no need to set here.
 NNODES_RUN_POST="2"
 NNODES_RUN_PRDGEN="1"
 NNODES_RUN_ANALYSIS="16"
@@ -2307,6 +2313,9 @@ USE_HOST_ENKF="TRUE"
 # DO_SMOKE_DUST:
 # Flag turn on smoke and dust for RRFS-SD
 #
+# SMOKE_RESEARCH
+# Flag turn use smoke research cycling capabilities
+#
 # EBB_DCYCLE:
 # 1: for retro, 2: for forecast
 #
@@ -2327,6 +2336,9 @@ DO_RADDA="FALSE"
 DO_BUFRSND="FALSE"
 USE_RRFSE_ENS="FALSE"
 DO_SMOKE_DUST="FALSE"
+SMOKE_RESEARCH="FALSE"
+RAVE_QA_FILTER="FALSE"
+SMOKE_CYCLE_INTERVAL="1"
 EBB_DCYCLE="2"
 DO_PM_DA="FALSE"
 USE_CLM="FALSE"
