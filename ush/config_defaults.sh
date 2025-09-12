@@ -1390,7 +1390,7 @@ QUILTING="TRUE"
 PRINT_ESMF="FALSE"
 
 WRTCMP_write_groups="1"
-WRTCMP_write_tasks_per_group="20"
+WRTCMP_write_tasks_per_group="760"
 WRTCMP_output_file="netcdf"
 WRTCMP_zstandard_level="0"
 WRTCMP_ideflate="0"
@@ -1864,7 +1864,7 @@ NNODES_MAKE_ICS="4"
 NNODES_BLEND_ICS="1"
 NNODES_MAKE_LBCS="4"
 NNODES_RUN_PREPSTART="1"
-NNODES_RUN_FCST=""  # This is calculated in the workflow generation scripts, so no need to set here.
+NNODES_RUN_FCST="19"  # This is calculated in the workflow generation scripts, so no need to set here.
 NNODES_RUN_POST="2"
 NNODES_RUN_PRDGEN="1"
 NNODES_RUN_ANALYSIS="16"
