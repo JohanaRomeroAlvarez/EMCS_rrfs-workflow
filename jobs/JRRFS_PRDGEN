@@ -8,15 +8,11 @@ set -xue
 # Specify Package Location
 #-----------------------------------------------------------------------
 export NET='rrfs'
-export MACHINE="WCOSS2"
-export WORKFLOW_MANAGER="ecflow"
 export HOMErrfs=${HOMErrfs:-""}
 export EXECrrfs=${EXECrrfs:-${HOMErrfs}/exec}
 export FIXrrfs=${FIXrrfs:-${HOMErrfs}/fix}
 export PARMrrfs=${PARMrrfs:-${HOMErrfs}/parm}
 export USHrrfs=${USHrrfs:-${HOMErrfs}/ush}
-export FIX_UPP="${FIXrrfs}/upp"
-export FIXprdgen="${FIXrrfs}/prdgen"
 
 #-----------------------------------------------------------------------
 # RRFS Product Generation
@@ -31,13 +27,12 @@ case "${WGF}" in
     export RUN="enkfrrfs"
     ;;
   "ensf")
-    export RUN="refs"
+    export RUN="rrfsens"
     ;;
   "firewx")
     export RUN="firewx"
     ;;
 esac
-export fhr=${FHR:-}
 
 export DATA=${DATA:-${DATAROOT}/${jobid}}
 mkdir -p ${DATA}
@@ -92,6 +87,10 @@ export CYCLE_TYPE=${CYCLE_TYPE:-prod}
 export DO_ENSFCST=${DO_ENSFCST:-"FALSE"}
 export COMrrfs=${COMrrfs:-$(compath.py -o rrfs/${rrfs_ver})}
 export COMOUT=${COMOUT:-$(compath.py -o ${NET}/${rrfs_ver}/${RUN}.${PDY}/${cyc})}
+
+# Output from smoke and dust goes to umbrella data
+export umbrella_post_data=${DATAROOT}/rrfs_post_${cyc}_${rrfs_ver_2d}_${envir}/${WGF}
+
 # Prdgen jobs do not run for spinup cycles
 if [ "${DO_ENSFCST}" = "TRUE" ]; then
   export COMOUT=${COMOUT}/${mem_num}

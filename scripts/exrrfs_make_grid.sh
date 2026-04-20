@@ -75,7 +75,7 @@ if [ ${WGF} = "firewx" ]; then
   LON_CTR=`grep ${hh}z $firewx_loc | awk '{print $3}'`
 
   python ${USHrrfs}/rrfsfw_domain.py ${LAT_CTR} ${LON_CTR}
-  if [[ $? != 0 ]]; then
+  if [ $? -ne 0 ]; then
     err_exit "WARNING: Problem with the requested fire weather grid - ABORT"
   fi
 fi
@@ -94,7 +94,7 @@ if [ "${GRID_GEN_METHOD}" = "GFDLgrid" ]; then
   nx_t6sg=$(( 2*GFDLgrid_RES ))
   grid_name="${GRID_GEN_METHOD}"
 
-  export pgm="make_hgrid"
+  export pgm="ufs_util_make_hgrid"
   . prep_step
 
   $APRUN ${EXECrrfs}/$pgm \
@@ -157,7 +157,7 @@ $settings"
   fi
 
   # Call the executable that generates the grid file.
-  export pgm="regional_esg_grid"
+  export pgm="ufs_util_regional_esg_grid"
   . prep_step
 
   $APRUN ${EXECrrfs}/$pgm ${rgnl_grid_nml_fp} >>$pgmout 2>${DATA}/errfile
@@ -181,7 +181,7 @@ print_info_msg "$VERBOSE" "Grid file generation completed successfully."
 #
 #-----------------------------------------------------------------------
 #
-export pgm="global_equiv_resol"
+export pgm="ufs_util_global_equiv_resol"
 . prep_step
 
 $APRUN ${EXECrrfs}/$pgm "${grid_fp}" >>$pgmout 2>${DATA}/errfile
@@ -228,7 +228,7 @@ fi
 #
 grid_fp_orig="${grid_fp}"
 grid_fn="${CRES}${DOT_OR_USCORE}grid.tile${TILE_RGNL}.halo${NHW}.nc"
-grid_fp="${firewx_input_dir}/${PDY}${cyc}/${grid_fn}"
+grid_fp="${COMOUT}/${grid_fn}"
 cpreq -p "${grid_fp_orig}" "${grid_fn}"
 cpreq -p "${grid_fn}" "${grid_fp}"
 #
@@ -267,7 +267,7 @@ fi
 # Set the full path to the "unshaved" grid file (wide halo).
 unshaved_fp="${grid_fp}"
 
-export pgm="shave"
+export pgm="ufs_util_shave"
 
 halo_num_list=('0' '3' '4')
 for halo_num in "${halo_num_list[@]}"; do
@@ -284,7 +284,7 @@ for halo_num in "${halo_num_list[@]}"; do
   $APRUN ${EXECrrfs}/$pgm < ${nml_fn} >>$pgmout 2>${DATA}/errfile
   export err=$?; err_chk
   mv ${DATA}/errfile ${DATA}/errfile_shave_nh${halo_num}
-  cpreq -p ${shaved_fp} ${firewx_input_dir}/${PDY}${cyc}
+  cpreq -p ${shaved_fp} ${COMOUT}/
 done
 #
 #-----------------------------------------------------------------------
@@ -293,15 +293,15 @@ done
 #
 #-----------------------------------------------------------------------
 #
-export pgm="make_solo_mosaic"
+export pgm="ufs_util_make_solo_mosaic"
 
 halo_num_list[${#halo_num_list[@]}]="${NHW}"
 for halo_num in "${halo_num_list[@]}"; do
   print_info_msg "Creating grid mosaic file with ${halo_num}-cell-wide halo..."  
   grid_fn="${CRES}${DOT_OR_USCORE}grid.tile${TILE_RGNL}.halo${halo_num}.nc"
-  grid_fp="${firewx_input_dir}/${PDY}${cyc}/${grid_fn}"
+  grid_fp="${COMOUT}/${grid_fn}"
   mosaic_fn="${CRES}${DOT_OR_USCORE}mosaic.halo${halo_num}.nc"
-  mosaic_fp="${firewx_input_dir}/${PDY}${cyc}/${mosaic_fn}"
+  mosaic_fp="${COMOUT}/${mosaic_fn}"
   mosaic_fp_prefix="${mosaic_fp%.*}"
 
   . prep_step

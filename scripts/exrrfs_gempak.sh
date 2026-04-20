@@ -3,13 +3,14 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export GEMPAK_FIX=${GEMPAK_FIX:-${FIXrrfs}/gempak/fix}
+
 #################################################
 # Set up model and cycle specific variables
 #################################################
 
 export model=`echo $RUN | awk '{print tolower($0)}'`
 export GRIB=prslev
-export DBN_ALERT_TYPE=RRFS_GEMPAK
 FHR=$(echo $FHR | cut -c1-3)
 #################################################################
 # Execute the script to make conus GEMPAK grids
@@ -24,15 +25,16 @@ fi
 
 # Copy model specific GEMPAK tables into working directory
 #
-cp ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
-cp ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
 
 cd $DATA
 export GRIB=prslev
 export type=rrfs_conus
-echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR" > $DATA/poescript
+export DBN_ALERT_TYPE=RRFS_DET_CONUS_GEMPAK
+echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR $DBN_ALERT_TYPE" > $DATA/poescript
 #################################################################
 
 #################################################################
@@ -45,39 +47,17 @@ cd $DATA/rrfs_conus_subh
 
 # Copy model specific GEMPAK tables into working directory
 #
-cp ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
-cp ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
 
 cd $DATA
-export GRIB=prslev
+export GRIB=2dfld
 export type=rrfs_conus_subh
-echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR" >> $DATA/poescript
+export DBN_ALERT_TYPE=RRFS_DET_CONUS_SUBH_GEMPAK
+echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR $DBN_ALERT_TYPE" >> $DATA/poescript
 fi
-#################################################################
-
-#################################################################
-# Execute the script to make conus GEMPAK grids (Common convection-allowing model fields)
-#
-# won't work currently as CONUS testbed files lack .idx files
-#
-#
-# mkdir -p $DATA/rrfs_conus_cam
-# cd $DATA/rrfs_conus_cam
-
-# Copy model specific GEMPAK tables into working directory
-#
-# cp ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
-# cp ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
-# cp ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
-# cp ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
-
-# cd $DATA
-# export GRIB=testbed
-# export type=rrfs_conus_cam
-# echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR" >> $DATA/poescript
-#################################################################
 
 #################################################################
 # Execute the script to make alaska GEMPAK grids
@@ -86,15 +66,16 @@ cd $DATA/rrfs_alaska
 
 # Copy model specific GEMPAK tables into working directory
 #
-cp ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
-cp ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
 
 cd $DATA
 export GRIB=prslev
+export DBN_ALERT_TYPE=RRFS_DET_AK_GEMPAK
 export type=rrfs_alaska
-echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR" >> $DATA/poescript
+echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR $DBN_ALERT_TYPE" >> $DATA/poescript
 #################################################################
 # Execute the script to make Puerto Rico GEMPAK grids
 mkdir -p $DATA/rrfs_prico
@@ -102,15 +83,16 @@ cd $DATA/rrfs_prico
 
 # Copy model specific GEMPAK tables into working directory
 #
-cp ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
-cp ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
 
 cd $DATA
 export GRIB=prslev
+export DBN_ALERT_TYPE=RRFS_DET_PR_GEMPAK
 export type=rrfs_prico
-echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR" >> $DATA/poescript
+echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR $DBN_ALERT_TYPE" >> $DATA/poescript
 #################################################################
 # Execute the script to make Hawaii GEMPAK grids
 mkdir -p $DATA/rrfs_hawaii
@@ -118,15 +100,16 @@ cd $DATA/rrfs_hawaii
 
 # Copy model specific GEMPAK tables into working directory
 #
-cp ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
-cp ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
-cp ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib129.tbl ncepgrib129.tbl
+cpreq ${GEMPAK_FIX}/rrfs_ncepgrib2.tbl ncepgrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_wmogrib2.tbl wmogrib2.tbl
+cpreq ${GEMPAK_FIX}/rrfs_vcrdgrib1.tbl vcrdgrib1.tbl
 
 cd $DATA
 export GRIB=prslev
+export DBN_ALERT_TYPE=RRFS_DET_HI_GEMPAK
 export type=rrfs_hawaii
-echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR" >> $DATA/poescript
+echo "$USHrrfs/prdgen_gempak.sh $type $GRIB $FHR $DBN_ALERT_TYPE" >> $DATA/poescript
 #################################################################
 cat poescript
 

@@ -3,6 +3,12 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export FIXam=${FIXam:-${HOMErrfs}/fix/am}
+export FIXLAM=${FIXLAM:-${HOMErrfs}/fix/lam/RRFS_NA_3km}
+export FIX_GSI="${FIXrrfs}/gsi"
+export GLMFED_EAST_ROOT="${DCOMROOT}/ldmdata/obs/GOES-19/GLM/tiles"
+export GLMFED_WEST_ROOT="${DCOMROOT}/ldmdata/obs/GOES-18/GLM/tiles"
+
 #
 #-----------------------------------------------------------------------
 #
@@ -59,7 +65,6 @@ python -u ${HOMErrfs}/ush/process_lightning.py
 if [ -f ${shared_output_data}/fedobs.nc ] && [ -s ${DATA}/fedobs.nc ]; then
   rm -f ${shared_output_data}/fedobs.nc
 fi
-#ln -s ${DATA}/fedobs.nc ${shared_output_data}/fedobs.nc
 cpreq ${DATA}/fedobs.nc ${shared_output_data}/fedobs.nc
 cpreq -p fedobs.nc ${COMOUT_ANALYSIS}/fedobs.nc
 

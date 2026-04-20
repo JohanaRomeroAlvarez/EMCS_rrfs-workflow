@@ -47,6 +47,8 @@ the specified cycle.
 #
 ulimit -a
 
+export FIX_GSI="${FIXrrfs}/gsi"
+
 case $MACHINE in
 #
 "WCOSS2")
@@ -89,7 +91,6 @@ esac
 # Process shared_output_data from Umbrella DATA
 #-----------------------------------------------------------------------
 #
-export shared_output_data=${umbrella_analysis_data}/output
 if [ ! -r ${shared_output_data} ]; then
   echo "FATAL ERROR: Directory ${shared_output_data} is not available for this job"
 fi
@@ -115,16 +116,6 @@ MM=${YYYYMMDDHH:4:2}
 DD=${YYYYMMDDHH:6:2}
 HH=${YYYYMMDDHH:8:2}
 YYYYMMDD=${YYYYMMDDHH:0:8}
-#
-#-----------------------------------------------------------------------
-# skip if GSI_TYPE is OBSERVER
-#-----------------------------------------------------------------------
-#
-#### This code and logic should be removed before implementation
-if [ "${GSI_TYPE}" = "OBSERVER" ]; then
-   echo "FATAL ERROR: Design issue identified"
-   exit 9
-fi
 #
 #-----------------------------------------------------------------------
 # Loop over first and last outer loops to generate innovation
@@ -260,7 +251,7 @@ done
 #
 #-----------------------------------------------------------------------
 #
-# cycling radiance bias corretion files
+# cycling radiance bias correction files
 #
 #-----------------------------------------------------------------------
 #
@@ -270,30 +261,29 @@ if [ "${DO_RADDA}" = "TRUE" ]; then
   else
     spinup_or_prod_rrfs=prod
   fi
-  SATBIAS_DIR=${SATBIAS_DIR:-$COMrrfs/satbias}
   if [ -r ${DATA} ]; then
      cd ${DATA}
 
      if [ ${numfile_cnv} -gt 0 ]; then
         tar -cvzf rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat_nc `cat listcnv`
-        cpreq -p ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat_nc  ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat
+        cpreq -p ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat_nc  ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat
      fi
      if [ ${numfile_rad} -gt 0 ]; then
         tar -cvzf rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat_nc `cat listrad`
-        cpreq -p ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat_nc  ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
+        cpreq -p ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat_nc  ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
      fi
      if [ ${numfile_rad_bin} -gt 0 ]; then
         tar -cvzf rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat `cat listrad_bin`
-        cpreq -p ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat  ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
+        cpreq -p ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat  ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
      fi
 
      # For EnVar DA  
      if [ -r ./satbias_out ]; then
-       cpreq -p ./satbias_out ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias
+       cpreq -p ./satbias_out ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias
        cpreq -p ./satbias_out ${COMOUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias
      fi
      if [ -r ./satbias_pc.out ]; then
-       cpreq -p ./satbias_pc.out ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias_pc
+       cpreq -p ./satbias_pc.out ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias_pc
        cpreq -p ./satbias_pc.out ${COMOUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias_pc
      fi
   fi
@@ -305,7 +295,7 @@ fi
 #------------------------------------------------------------------------
 
 if [ "${DO_RADMON}" = "TRUE" ]; then 
-   if [ ! -f ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat ]; then
+   if [ ! -f ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat ]; then
      echo "***radstat file for " ${YYYYMMDDHH} "is not existing, skipping radmon job***"
    else
      echo "Run EMC Radmon package to generate daily monitoring data for satellite"
@@ -324,7 +314,8 @@ if [ "${DO_RADMON}" = "TRUE" ]; then
 
      export RAD_AREA=${RAD_AREA:-rgn}
      export CYCLE_INTERVAL=${CYCLE_INTERVAL:-1}
-     export DATA=${DATA}/radmon
+     export DATAradmon=${DATA}/radmon
+     mkdir -p $DATAradmon
      export TANKverf_radM1=${TANKverf_radM1:-${TANKverf}/radmon.${PDY}}
 
      export GSI_MON_BIN=$EXECrrfs
@@ -332,8 +323,8 @@ if [ "${DO_RADMON}" = "TRUE" ]; then
 
      export RADMON_SUFFIX=rrfs
      export rgnHH=${PDY}${cyc}
-     export biascr=${biascr:-${SATBIAS_DIR}/${RADMON_SUFFIX}.${CYCLE_TYPE}.${rgnHH}_satbias}
-     export radstat=${radstat:-${SATBIAS_DIR}/${RADMON_SUFFIX}.${CYCLE_TYPE}.${rgnHH}_radstat}
+     export biascr=${biascr:-${SATBIAS_OUT}/${RADMON_SUFFIX}.${CYCLE_TYPE}.${rgnHH}_satbias}
+     export radstat=${radstat:-${SATBIAS_OUT}/${RADMON_SUFFIX}.${CYCLE_TYPE}.${rgnHH}_radstat}
 
      echo "radstat: $radstat"
      echo "biascr:  $biascr"

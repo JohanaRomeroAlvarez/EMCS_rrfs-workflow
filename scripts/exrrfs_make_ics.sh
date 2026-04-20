@@ -3,6 +3,16 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export FIXam=${FIXam:-${HOMErrfs}/fix/am}
+export FIXLAM=${FIXLAM:-${HOMErrfs}/fix/lam/RRFS_NA_3km}
+export FIX_GSI="${FIXrrfs}/gsi"
+# export OROG_DIR="${HOMErrfs}/fix/lam/RRFS_NA_3km"
+export THOMPSON_MP_CLIMO_FP="${FIXam}/Thompson_MP_MONTHLY_CLIMO.nc"
+if [ $WGF == "firewx" ]; then
+#notused?  export CCPP_PHYS_SUITE_FP="${PARMrrfs}/config/${WGF}/suite_RRFS_sas_nogwd.xml"
+  export CCPP_PHYS_SUITE='RRFS_sas_nogwd'
+fi
+
 #
 #-----------------------------------------------------------------------
 #
@@ -124,17 +134,6 @@ export extrn_mdl_staging_dir="${shared_output_data}"
 #
 #-----------------------------------------------------------------------
 #
-# Specify the set of valid argument names for this script/function.  Then
-# process the arguments provided to this script/function (which should
-# consist of a set of name-value pairs of the form arg1="value1", etc).
-#
-#-----------------------------------------------------------------------
-#
-#### valid_args=( "extrn_mdl_fns_on_disk" )
-#### process_args valid_args "$@"
-#
-#-----------------------------------------------------------------------
-#
 # Set machine-dependent parameters.
 #
 #-----------------------------------------------------------------------
@@ -174,7 +173,7 @@ case "$MACHINE" in
 esac
 
 if [ ${PREDEF_GRID_NAME} = "RRFS_FIREWX_1.5km" ]; then
-  export FIXLAM=${firewx_input_dir}/${PDY}${cyc}
+  export FIXLAM=${COMrrfs}/${RUN}.${PDY}/${cyc}/input
 else
   export FIXLAM=${FIXLAM:-${FIXrrfs}/lam/${PREDEF_GRID_NAME}}
 fi
@@ -692,7 +691,7 @@ fi
 #
 #-----------------------------------------------------------------------
 #
-export pgm="chgres_cube"
+export pgm="ufs_util_chgres_cube"
 . prep_step
 
 ${APRUN} ${EXECrrfs}/$pgm >>$pgmout 2>errfile
@@ -767,7 +766,7 @@ if [[ $DO_ENS_BLENDING == "TRUE" && $EXTRN_MDL_NAME_ICS = "GDASENKF" ]]; then
   export OMP_NUM_THREADS=2
   fixgriddir=$FIX_GSI/${PREDEF_GRID_NAME}
   cpreq ${fixgriddir}/cold2warm_all.nc .
-  export pgm1=fv3lam_pre_blending.exe
+  export pgm1=rrfs_util_fv3lam_pre_blending.exe
 . prep_step
   ${APRUN_PRE_BLENDING} ${EXECrrfs}/$pgm1 >>$pgmout_pre_blending 2>errfile_pre_blending
   export err=$?; err_chk

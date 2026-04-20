@@ -3,6 +3,11 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export FIXam=${FIXam:-${HOMErrfs}/fix/am}
+export FIXLAM=${FIXLAM:-${HOMErrfs}/fix/lam/RRFS_NA_3km}
+export FIX_GSI="${FIXrrfs}/gsi"
+export DCOMINgvf="${DCOMROOT}/viirs"
+
 export CRES=${CRES:-"C3463"}
 export PREDEF_GRID_NAME=${PREDEF_GRID_NAME:-"RRFS_NA_3km"}
 #
@@ -46,6 +51,7 @@ This is the ex-script for the prep_cyc tasks for the specified cycle.
 #
 #-----------------------------------------------------------------------
 #
+
 case $MACHINE in
 
   "WCOSS2")
@@ -82,6 +88,25 @@ Run command has not been specified for this machine:
 
 esac
 export FIXLAM=${FIXLAM:-${FIXrrfs}/lam/${PREDEF_GRID_NAME}}
+
+#
+#-----------------------------------------------------------------------
+#
+# Specify Timeout Behavior of prep_cyc to checking for restart files
+# from CYCm1.
+#
+# If 1-hour restart files from CYCm1 do not exist after $SLEEP_TIME,
+# proceed with CYCm2 2-hour restart files, then CYCm3 3-hour restart files.
+#
+# SLEEP_TIME - Amount of time to wait for CYCm1 1-h hrestart files before
+#              trying CYCm2 2-h restart files
+# SLEEP_INT  - Amount of time to wait between checking for restart files
+#
+#-----------------------------------------------------------------------
+SLEEP_TIME=300
+SLEEP_INT=15
+SLEEP_LOOP_MAX=`expr $SLEEP_TIME / $SLEEP_INT`
+
 #
 #-----------------------------------------------------------------------
 #
@@ -176,7 +201,7 @@ else
   #     cold start if BKTYPE=1 
   #     warm start if BKTYPE=0
   #     spinupcyc + warm start if BKTYPE=2
-  #       the previous 6 cycles are searched to find the restart files
+  #       the previous 3 cycles are searched to find the restart files
   #       valid at this time from the closet previous cycle.
   #
   #-----------------------------------------------------------------------
@@ -236,10 +261,10 @@ else
     fi
   fi
 
-  # if do surface surgery, then skip surface cycle
+  # if doing surface surgery, then skip surface cycle
   if [ ${YYYYMMDDHH} -eq ${SOIL_SURGERY_time} ] ; then
     if [ "${CYCLE_TYPE}" = "spinup" ]; then
-      SFC_CYC=3  # skip for soil surgery
+      export SFC_CYC=3  # skip for soil surgery
     fi
   fi
 
@@ -250,16 +275,13 @@ else
       cpreq -p ${bkpath}/gfs_ctrl.nc gfs_ctrl.nc        
       cpreq -p ${bkpath}/gfs_data.tile7.halo0.nc gfs_data.tile7.halo0.nc        
       cpreq -p ${bkpath}/sfc_data.tile7.halo0.nc sfc_data.tile7.halo0.nc        
-      #cpreq -p ${bkpath}/gfs_bndy.tile7.000.nc bk_gfs_bndy.tile7.000.nc
-      #cpreq -p ${bkpath}/gfs_data.tile7.halo0.nc bk_gfs_data.tile7.halo0.nc
-      #cpreq -p ${bkpath}/sfc_data.tile7.halo0.nc bk_sfc_data.tile7.halo0.nc
       print_info_msg "$VERBOSE" "cold start from $bkpath"
       echo "${YYYYMMDDHH}(${CYCLE_TYPE}): cold start at ${current_time} from $bkpath "
     else
       err_exit "Cannot find cold start initial condition from : ${bkpath}"
     fi
 
-  elif [[ $BKTYPE == 3 ]]; then
+  elif [[ $BKTYPE == 3 ]]; then  # Blending 
     bkpath=${ICS_ROOT}
     if [ -r "${bkpath}/coupler.res" ]; then
       cpreq -p ${bkpath}/fv_core.res.nc fv_core.res.nc
@@ -270,12 +292,6 @@ else
       cpreq -p ${bkpath}/sfc_data.nc sfc_data.nc
       cpreq -p ${bkpath}/gfs_ctrl.nc gfs_ctrl.nc
       cpreq -p ${bkpath}/coupler.res bk_coupler.res
-      #cpreq -p ${bkpath}/fv_core.res.nc bk_fv_core.res.nc
-      #cpreq -p ${bkpath}/fv_core.res.tile1.nc bk_fv_core.res.tile1.nc
-      #cpreq -p ${bkpath}/fv_srf_wnd.res.tile1.nc bk_fv_srf_wnd.res.tile1.nc
-      #cpreq -p ${bkpath}/fv_tracer.res.tile1.nc bk_fv_tracer.res.tile1.nc
-      #cpreq -p ${bkpath}/phy_data.nc bk_phy_data.nc
-      #cpreq -p ${bkpath}/sfc_data.nc bk_sfc_data.nc
       echo "${YYYYMMDDHH}(${CYCLE_TYPE}): blended warm start at ${current_time} from $bkpath "
     else
       err_exit "Error: cannot find blended warm start initial condition from : ${bkpath}"
@@ -321,93 +337,70 @@ else
     bkpath=${LBCS_ROOT}/${RUN}.${PDY}/${cyc}_spinup/${mem_num}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
     ctrl_bkpath=${LBCS_ROOT}/${RUN}.${PDY}/${cyc}_spinup/${mem_num}/forecast/INPUT
   else
-    YYYYMMDDHHmInterv=$($NDATE -${DA_CYCLE_INTERV} ${YYYYMMDD}${HH})
-    YYYYMMDDInterv=`echo ${YYYYMMDDHHmInterv} | cut -c1-8`
-    HHInterv=`echo ${YYYYMMDDHHmInterv} | cut -c9-10`
-    if [ "${DO_ENSEMBLE}" = "TRUE" ]; then
-      if [ ${CYCLE_TYPE} == "spinup" ]; then
-        bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${mem_num}/${fg_restart_dirname}/RESTART
-      else
+    n=${DA_CYCLE_INTERV}
+      YYYYMMDDHHmInterv=$($NDATE -${n} ${YYYYMMDD}${HH})
+      YYYYMMDDInterv=`echo ${YYYYMMDDHHmInterv} | cut -c1-8`
+      HHInterv=`echo ${YYYYMMDDHHmInterv} | cut -c9-10`
+      if [ "${DO_ENSEMBLE}" = "TRUE" ]; then
         if [ ${cyc} == "08" ] || [ ${cyc} == "20" ]; then
           bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${mem_num}/${fg_restart_dirname}/RESTART
         else
           bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${mem_num}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
         fi
-      fi
-    else
-      if [ ${CYCLE_TYPE} == "spinup" ]; then
-        bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${fg_restart_dirname}/RESTART
       else
-        if [ ${BKTYPE} -eq 2 ]; then
+        if [ ${CYCLE_TYPE} == "spinup" ]; then
           bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${fg_restart_dirname}/RESTART
         else
-          bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
-        fi
-      fi
-    fi
-
-    n=${DA_CYCLE_INTERV}
-    while [[ $n -le 6 ]] ; do
-      checkfile=${bkpath}/${restart_prefix}coupler.res
-      if [ -r "${checkfile}" ] ; then
-        print_info_msg "$VERBOSE" "Found ${checkfile}; Use it as background for analysis "
-        break
-      else
-        n=$((n + ${DA_CYCLE_INTERV}))
-	YYYYMMDDHHmInterv=$($NDATE -${n} ${YYYYMMDD}${HH})
-        YYYYMMDDInterv=`echo ${YYYYMMDDHHmInterv} | cut -c1-8`
-        HHInterv=`echo ${YYYYMMDDHHmInterv} | cut -c9-10`
-        if [ "${DO_ENSEMBLE}" = "TRUE" ]; then
-          if [ ${CYCLE_TYPE} == "spinup" ]; then
-            bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${mem_num}/${fg_restart_dirname}/RESTART
-          else
-            bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${mem_num}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
-          fi
-        else
-          if [ ${CYCLE_TYPE} == "spinup" ]; then
+          if [ ${BKTYPE} -eq 2 ]; then
             bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${fg_restart_dirname}/RESTART
           else
             bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
-          fi
+	  fi
         fi
-        print_info_msg "$VERBOSE" "Trying this path: ${bkpath}"
       fi
-    done
-
+      print_info_msg "$VERBOSE" "Trying this path: ${bkpath}"
     checkfile=${bkpath}/${restart_prefix}coupler.res
-    # spin-up cycle is not success, try to find background from full cycle
-    if [ ! -r "${checkfile}" ] && [ ${BKTYPE} -eq 2 ]; then
-     print_info_msg "$VERBOSE" "cannot find background from spin-up cycle, try product cycle"
-     fg_restart_dirname=forecast
-     YYYYMMDDHHmInterv=$($NDATE -${DA_CYCLE_INTERV} ${YYYYMMDD}${HH})
-     YYYYMMDDInterv=`echo ${YYYYMMDDHHmInterv} | cut -c1-8`
-     HHInterv=`echo ${YYYYMMDDHHmInterv} | cut -c9-10`
-     if [ "${DO_ENSEMBLE}" = "TRUE" ]; then
-       bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${mem_num}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
-     else
-       bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
-     fi
-
-     restart_prefix="${YYYYMMDD}.${HH}0000."
-     n=${DA_CYCLE_INTERV}
-     while [[ $n -le 6 ]] ; do
-       checkfile=${bkpath}/${restart_prefix}coupler.res
-       if [ -r "${checkfile}" ] ; then
-         print_info_msg "$VERBOSE" "Found ${checkfile}; Use it as background for analysis "
-         break
-       else
-         n=$((n + ${DA_CYCLE_INTERV}))
-	 YYYYMMDDHHmInterv=$($NDATE -${n} ${YYYYMMDD}${HH})
-         YYYYMMDDInterv=`echo ${YYYYMMDDHHmInterv} | cut -c1-8`
-         HHInterv=`echo ${YYYYMMDDHHmInterv} | cut -c9-10`
-         if [ "${DO_ENSEMBLE}" = "TRUE" ]; then
-           bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${mem_num}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
-         else
-           bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
-         fi
-         print_info_msg "$VERBOSE" "Trying this path: ${bkpath}"
-       fi
-     done
+    if (( $(ls -l ${bkpath}/${restart_prefix}* 2>/dev/null | wc -l ) != 8 )) && [ ${CYCLE_TYPE} != "spinup" ]; then
+      fallback_enable="YES"
+      ic=0
+      while [[ $ic -lt $SLEEP_LOOP_MAX ]]; do
+        print_info_msg "$VERBOSE" "Not all ${restart_prefix}* files are available. Sleep $SLEEP_INT sec... "
+        ic=`expr $ic + 1`
+        sleep $SLEEP_INT
+        if [ -r "${checkfile}" ] && (( $(ls -l ${bkpath}/${restart_prefix}* 2>/dev/null | wc -l ) == 8 )) ; then
+          ic=$SLEEP_LOOP_MAX
+          print_info_msg "$VERBOSE" "All ${restart_prefix}* files are now available. Proceed without fallback"
+          fallback_enable="NO"
+        fi
+      done
+      if [ ${fallback_enable} == "YES" ]; then
+        print_info_msg "$VERBOSE" "cannot find background, fallback for product cycle"
+        fg_restart_dirname=forecast
+        restart_prefix="${YYYYMMDD}.${HH}0000."
+        if [ ${BKTYPE} -eq 2 ] && [ "${DO_ENSEMBLE}" = "FALSE" ]; then  #det cycle 09/21z start from n=1
+          n=${DA_CYCLE_INTERV}
+        else
+          n=$((n + ${DA_CYCLE_INTERV}))
+        fi
+        while [[ $n -le 3 ]] ; do
+           YYYYMMDDHHmInterv=$($NDATE -${n} ${YYYYMMDD}${HH})
+           YYYYMMDDInterv=`echo ${YYYYMMDDHHmInterv} | cut -c1-8`
+           HHInterv=`echo ${YYYYMMDDHHmInterv} | cut -c9-10`
+           if [ "${DO_ENSEMBLE}" = "TRUE" ]; then
+             bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${mem_num}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
+           else
+             bkpath=${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${fg_restart_dirname}/RESTART  # cycling, use background from RESTART
+           fi
+           print_info_msg "$VERBOSE" "Trying this path: ${bkpath}"
+  
+           checkfile=${bkpath}/${restart_prefix}coupler.res
+           if [ -r "${checkfile}" ] ; then
+             print_info_msg "$VERBOSE" "Found ${checkfile}; Use it as background for analysis "
+             break
+    	 fi
+           n=$((n + ${DA_CYCLE_INTERV}))
+        done
+      fi
     fi
   fi
 
@@ -426,31 +419,10 @@ else
       fi
       cpreq -p ${bkpath}/${restart_prefix}${file}  bk_${file}
     done
-    if [ "${CYCLE_SUBTYPE}" = "spinup" ] ; then
-      cpreq -p ${LBCS_ROOT}/${RUN}.${PDY}/${cyc}_spinup/${mem_num}/${fg_restart_dirname}/INPUT/gfs_ctrl.nc  gfs_ctrl.nc
-    else
-      if [ "${DO_ENSEMBLE}" = "TRUE" ]; then
-        if [ "${CYCLE_TYPE}" = "spinup" ]; then
-          cpreq -p ${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${mem_num}/${fg_restart_dirname}/INPUT/gfs_ctrl.nc  gfs_ctrl.nc
-        else
-          if [ ${cyc} == "08" ] || [ ${cyc} == "20" ]; then
-            cpreq -p ${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${mem_num}/${fg_restart_dirname}/INPUT/gfs_ctrl.nc  gfs_ctrl.nc
-          else
-            cpreq -p ${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${mem_num}/${fg_restart_dirname}/INPUT/gfs_ctrl.nc  gfs_ctrl.nc
-          fi
-        fi
-      else
-        if [ "${CYCLE_TYPE}" = "spinup" ]; then
-          cpreq -p ${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${fg_restart_dirname}/INPUT/gfs_ctrl.nc  gfs_ctrl.nc
-        else
-          if [ ${BKTYPE} == "2" ]; then
-            cpreq -p ${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}_spinup/${fg_restart_dirname}/INPUT/gfs_ctrl.nc  gfs_ctrl.nc
-          else
-            cpreq -p ${LBCS_ROOT}/${RUN}.${YYYYMMDDInterv}/${HHInterv}/${fg_restart_dirname}/INPUT/gfs_ctrl.nc  gfs_ctrl.nc
-          fi
-        fi
-      fi
-    fi
+
+    ctrl_bkpath=${bkpath}/../INPUT
+    cpreq -p ${ctrl_bkpath}/gfs_ctrl.nc  gfs_ctrl.nc
+
     echo "${YYYYMMDDHH}(${CYCLE_TYPE}): warm start at ${current_time} from ${checkfile} "
     #
     # remove checksum from restart files. Checksum will cause trouble if model initializes from analysis
@@ -499,7 +471,7 @@ if [ ${HH} -eq ${SNOWICE_update_hour} ] && [ "${CYCLE_TYPE}" = "prod" ] ; then
   if [ -r "latest.SNOW_IMS" ]; then
     ln -sf ./latest.SNOW_IMS                imssnow2
     ln -sf ${FIX_GSI}/${PREDEF_GRID_NAME}/fv3_grid_spec  fv3_grid_spec
-    export pgm="process_imssnow_fv3lam.exe"
+    export pgm="rrfs_util_process_imssnow_fv3lam.exe"
     . prep_step
 
     ${APRUN} ${EXECrrfs}/$pgm ${IO_LAYOUT_Y} >>$pgmout 2>errfile
@@ -550,7 +522,7 @@ cat << EOF > sst.namelist
 /
 EOF
 
-    export pgm="process_updatesst.exe"
+    export pgm="rrfs_util_process_updatesst.exe"
     ln -sf ${FIX_GSI}/${PREDEF_GRID_NAME}/fv3_grid_spec  fv3_grid_spec
     . prep_step
     ${APRUN} ${EXECrrfs}/$pgm >>$pgmout 2>errfile
@@ -647,13 +619,10 @@ if [ ${SFC_CYC} -eq 1 ] || [ ${SFC_CYC} -eq 2 ] ; then  # cycle surface fields
     surface_file_dir_name=surface
     restart_prefix_find="missing"
     restart_suffix_find="missing"
-    bkpath=${LBCS_ROOT}/${surface_file_dir_name}
+    bkpath=${LBCS_ROOT}/${surface_file_dir_name}/surface.${PDY}
+    bkpathroot=${LBCS_ROOT}/${surface_file_dir_name}
 
     restart_prefix="${YYYYMMDD}.${HH}0000."
-    if [ -r "${bkpath}/${restart_prefix}sfc_data.nc.sync" ]; then
-      restart_prefix_find=${restart_prefix}
-      restart_suffix_find="sync"
-    else
       for ndayinhour in 00 24 48 72
       do 
         if [ "${restart_suffix_find}" = "missing" ]; then
@@ -665,7 +634,7 @@ if [ ${SFC_CYC} -eq 1 ] || [ ${SFC_CYC} -eq 2 ] ; then  # cycle surface fields
 
           n=${DA_CYCLE_INTERV}
           while [[ $n -le 13 ]] ; do
-            checkfile=${bkpath}/${restart_prefix}sfc_data.nc.${YYYYMMDDHHmInterv}
+            checkfile=${bkpathroot}/surface.${yyyymmddhh_prev:0:8}/${restart_prefix}sfc_data.nc.${YYYYMMDDHHmInterv}
             if [ -r "${checkfile}" ] && [ "${restart_suffix_find}" == "missing" ]; then
               restart_prefix_find=${restart_prefix}
               restart_suffix_find=${YYYYMMDDHHmInterv}
@@ -679,12 +648,14 @@ if [ ${SFC_CYC} -eq 1 ] || [ ${SFC_CYC} -eq 2 ] ; then  # cycle surface fields
           done
         fi
       done
-    fi
     surface_file_path=$bkpath
 
     # check if there are surface file in continue cycle data space:
     if [ "${restart_suffix_find}" = "missing" ] || [ "${restart_prefix_find}" = "missing" ]; then
-      surface_file_path=${COMOUT}/surface
+      surface_file_path=${COMrrfs}/surface/surface.${PDY}
+      surface_file_path_m1=${COMrrfs}/surface/surface.${PDYm1}
+
+
       for ndayinhour in 00 24
       do 
         if [ "${restart_suffix_find}" = "missing" ]; then
@@ -697,10 +668,15 @@ if [ ${SFC_CYC} -eq 1 ] || [ ${SFC_CYC} -eq 2 ] ; then  # cycle surface fields
           n=${DA_CYCLE_INTERV}
           while [[ $n -le 2 ]] ; do
             checkfile=${surface_file_path}/${restart_prefix}sfc_data.nc.${YYYYMMDDHHmInterv}
+            checkfile_m1=${surface_file_path_m1}/${restart_prefix}sfc_data.nc.${YYYYMMDDHHmInterv}
+
             if [ -r "${checkfile}" ] && [ "${restart_suffix_find}" == "missing" ]; then
               restart_prefix_find=${restart_prefix}
               restart_suffix_find=${YYYYMMDDHHmInterv}
               print_info_msg "$VERBOSE" "Found ${checkfile}; Use it as surface for analysis "
+	    elif [ -r "${checkfile_m1}" ]  && [ "${restart_suffix_find}" == "missing" ]; then
+              restart_prefix_find=${restart_prefix}
+              restart_suffix_find=${YYYYMMDDHHmInterv}
             fi
  
             n=$((n + ${DA_CYCLE_INTERV}))
@@ -712,7 +688,7 @@ if [ ${SFC_CYC} -eq 1 ] || [ ${SFC_CYC} -eq 2 ] ; then  # cycle surface fields
       done
     fi
 
-    # rename the soil mositure and temperature fields in restart file
+    # rename the soil moisture and temperature fields in restart file
       rm -f cycle_surface.done
       if [ "${restart_suffix_find}" = "missing" ] || [ "${restart_prefix_find}" = "missing" ]; then
         print_info_msg "WARNING: cannot find surface from previous cycle"
@@ -727,7 +703,7 @@ if [ ${SFC_CYC} -eq 1 ] || [ ${SFC_CYC} -eq 2 ] ; then  # cycle surface fields
             ncks --append geolonlat.nc sfc_data.tile7.halo0.nc
             ncrename -v tslb,stc -v smois,smc -v sh2o,slc sfc_data.tile7.halo0.nc
           else
-	    export pgm="update_ice.exe"
+	    export pgm="rrfs_util_update_ice.exe"
             cpreq -p ${checkfile}  ${restart_prefix_find}sfc_data.nc
             mv sfc_data.nc gfsice.sfc_data.nc
             mv ${restart_prefix_find}sfc_data.nc sfc_data.nc
@@ -785,7 +761,7 @@ if [ ${Update_GVF} -ge 1 ]; then
       if [ ${Update_GVF} -eq 2 ]; then
         ln -sf sfc_data.tile7.halo0.nc sfc_data.nc
       fi
-      export pgm="update_GVF.exe"
+      export pgm="rrfs_util_update_GVF.exe"
       ln -sf ${FIX_GSI}/${PREDEF_GRID_NAME}/fv3_grid_spec  fv3_grid_spec
       . prep_step
       if [ ${Update_GVF} -eq 2 ]; then
@@ -881,98 +857,15 @@ if [ -r "${checkfile}" ]; then
 else
   err_exit "Cannot find boundary file: ${checkfile}"
 fi
-#
-#-----------------------------------------------------------------------
-#
-# conduct surface surgery to transfer RAP/HRRR surface fields into RRFS.
-# 
-# This surgery only needs to be done once to give RRFS a good start of the surface.
-# Please consult Ming or Tanya first before turning on this surgery.
-#
-#-----------------------------------------------------------------------
-# 
+
+
+
 if [ ${SFC_CYC} -eq 3 ] ; then
-
-   do_lake_surgery=".false."
-   if [ "${USE_CLM}" = "TRUE" ]; then
-     do_lake_surgery=".true."
-   fi
-   raphrrr_com=${COMROOT}
-   rapfile='missing'
-   hrrrfile='missing'
-   hrrr_akfile='missing'
-   current_cdate=${YYYYMMDD}${HH}
-   new_cdate=$($NDATE -1 ${current_cdate})
-   new_pdy=$(echo ${new_cdate}| cut -c1-8)
-   new_cyc=$(echo ${new_cdate}| cut -c9-10)
-   if [ -r ${COMINrap}/nwges/rapges/rap_${new_cdate}f001 ]; then
-     cpreq -p ${COMINrap}/nwges/rapges/rap_${new_cdate}f001 sfc_rap
-     rapfile='sfc_rap'
-   fi
-   if [ -r ${COMINhrrr}/nwges/hrrrges_sfc/conus/hrrr_${new_cdate}f001 ]; then
-     cpreq -p ${COMINhrrr}/nwges/hrrrges_sfc/conus/hrrr_${new_cdate}f001 sfc_hrrr
-     hrrrfile='sfc_hrrr'
-   fi
- 
-   export pgm="use_raphrrr_sfc.exe"
-   ln -sf ${FIX_GSI}/${PREDEF_GRID_NAME}/fv3_grid_spec  fv3_grid_spec
-   for file in ${rapfile} ${hrrrfile} ${hrrr_akfile}
-   do
-     if [ "${file}" = "missing" ]; then
-       continue
-     else
-       if [ "${file}" = "${rapfile}" ]; then
-
-cat << EOF > use_raphrrr_sfc.namelist
-&setup
-rapfile=${rapfile}
-hrrrfile='missing'
-hrrr_akfile='missing'
-rrfsfile='sfc_data.nc'
-do_lake_surgery=${do_lake_surgery}
-update_snow=true
-/
-EOF
-         cp use_raphrrr_sfc.namelist use_raphrrr_sfc.namelist_rap
-
-       elif [ "${file}" = "${hrrrfile}" ]; then
-
-cat << EOF > use_raphrrr_sfc.namelist
-&setup
-rapfile='missing'
-hrrrfile=${hrrrfile}
-hrrr_akfile='missing'
-rrfsfile='sfc_data.nc'
-do_lake_surgery=${do_lake_surgery}
-update_snow=false
-/
-EOF
-         cp use_raphrrr_sfc.namelist use_raphrrr_sfc.namelist_hrrr
-
-       elif [ "${file}" = "${hrrr_akfile}" ]; then
-
-cat << EOF > use_raphrrr_sfc.namelist
-&setup
-rapfile='missing'
-hrrrfile='missing'
-hrrr_akfile=${hrrr_akfile}
-rrfsfile='sfc_data.nc'
-do_lake_surgery=${do_lake_surgery}
-update_snow=false
-/
-EOF
-
-         cp use_raphrrr_sfc.namelist use_raphrrr_sfc.namelist_hrrrak
-       fi
-     fi
-     cp sfc_data.nc sfc_data.nc_read
-     . prep_step
-     ${APRUN} ${EXECrrfs}/$pgm >>$pgmout 2>errfile
-     export err=$?; err_chk
-     mv errfile errfile_sfc_surgery.${file}
-   done
-   echo "${YYYYMMDDHH}(${CYCLE_TYPE}): run surface surgery"
+# 
+echo need to uncomment ush/rrfs_soilsurgery.sh call to run SFC_CYC=3
+# ${USHrrfs}/rrfs_soilsurgery.sh
 fi
+
 #
 #-----------------------------------------------------------------------
 #
@@ -1032,7 +925,7 @@ Please check the following user defined variables:
     #Format for fvcom_time: YYYY-MM-DDTHH:00:00.000000
     fvcom_time="${YYYY}-${MM}-${DD}T${HH}:00:00.000000"
 
-    pgm="fvcom_to_FV3"
+    pgm="ufs_util_fvcom_to_FV3"
 
     # decide surface
     if [ ${BKTYPE} -eq 1 ] ; then
@@ -1064,30 +957,6 @@ for file_for_fcst_INPUT in *.nc coupler.res fv3_grid_spec bk_coupler.res gvf* *.
   fi
   mv ${DATA}/${file_for_fcst_INPUT} ${FORECAST_INPUT_PRODUCT}
 done
-
-
-#### mv ${DATA}/*.nc ${ICS_ROOT}
-#### ln -s ${ICS_ROOT}/*.nc ${FORECAST_INPUT_PRODUCT}
-#### if [ -s ${DATA}/coupler.res ]; then
-####   mv ${DATA}/coupler.res ${ICS_ROOT}
-####   ln -s ${ICS_ROOT}/coupler.res ${FORECAST_INPUT_PRODUCT}
-#### fi
-#### if [ -s ${DATA}/fv3_grid_spec ]; then
-####   mv ${DATA}/fv3_grid_spec ${ICS_ROOT}
-####   ln -s ${ICS_ROOT}/fv3_grid_spec ${FORECAST_INPUT_PRODUCT}
-#### fi
-#### if [ -s ${DATA}/bk_coupler.res ]; then
-####   mv ${DATA}/bk_coupler.res ${ICS_ROOT}
-####   ln -s ${ICS_ROOT}/bk_coupler.res ${FORECAST_INPUT_PRODUCT}
-#### fi
-#### if [ $(eval ls ${DATA}/gvf*|wc -l) -gt 0 ]; then
-####   mv ${DATA}/gvf* ${ICS_ROOT}
-####   ln -s ${ICS_ROOT}/gvf* ${FORECAST_INPUT_PRODUCT}
-#### fi
-#### if [ $(eval ls ${DATA}/*.grib2|wc -l) -gt 0 ]; then
-####   mv ${DATA}/*.grib2 ${ICS_ROOT}
-####   ln -s ${ICS_ROOT}/*.grib2 ${FORECAST_INPUT_PRODUCT}
-#### fi
 
 #
 #-----------------------------------------------------------------------

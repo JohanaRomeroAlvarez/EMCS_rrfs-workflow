@@ -3,6 +3,8 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export FIX_GSI="${FIXrrfs}/gsi"
+
 #
 #-----------------------------------------------------------------------
 #
@@ -273,7 +275,7 @@ EOF
 ####
 #exit 0
 
-export pgm="fv3lam_nonvarcldana.exe"
+export pgm="rrfs_util_fv3lam_nonvarcldana.exe"
 . prep_step
 
 if [ ${BKTYPE} -eq 0 ]; then

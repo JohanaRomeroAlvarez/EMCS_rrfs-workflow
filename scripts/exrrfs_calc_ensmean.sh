@@ -170,7 +170,7 @@ EOF
 #
 #-----------------------------------------------------------------------
 #
-export pgm="ens_mean_recenter_P2DIO.exe"
+export pgm="rrfs_util_ens_mean_recenter_P2DIO.exe"
 . prep_step
 
 ${APRUN} ${EXECrrfs}/$pgm < namelist.ens >>$pgmout 2>errfile
@@ -183,26 +183,6 @@ export err=$?; err_chk
 ln -s fv3sar_tile1_dynvar fv_core.res.tile1.nc
 ln -s fv3sar_tile1_tracer fv_tracer.res.tile1.nc
 ln -s fv3sar_tile1_sfcvar sfc_data.nc
-#
-#-----------------------------------------------------------------------
-#
-# Fix checksum for the files after calculating ensemble mean 
-#
-#-----------------------------------------------------------------------
-#
-#for files in fv3sar_tile1_dynvar  fv3sar_tile1_sfcvar  fv3sar_tile1_tracer  ; do
-#  ncatted -a checksum,,d,,  $files
-#done
-#
-#-----------------------------------------------------------------------
-#
-# Copy output from the ensemble mean task into umbrella data directory.
-#
-#-----------------------------------------------------------------------
-#
-#cpreq fv3sar_tile1_dynvar ${umbrella_calc_ensmean_data}
-#cpreq fv3sar_tile1_sfcvar ${umbrella_calc_ensmean_data}
-#cpreq fv3sar_tile1_tracer ${umbrella_calc_ensmean_data}
 #
 #-----------------------------------------------------------------------
 #

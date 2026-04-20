@@ -8,15 +8,11 @@ set -xue
 # Specify Package Location
 #-----------------------------------------------------------------------
 export NET='rrfs'
-export MACHINE="WCOSS2"
-export WORKFLOW_MANAGER="ecflow"
 export HOMErrfs=${HOMErrfs:-""}
 export EXECrrfs=${EXECrrfs:-${HOMErrfs}/exec}
 export FIXrrfs=${FIXrrfs:-${HOMErrfs}/fix}
 export PARMrrfs=${PARMrrfs:-${HOMErrfs}/parm}
 export USHrrfs=${USHrrfs:-${HOMErrfs}/ush}
-export FIXam=${FIXam:-${HOMErrfs}/fix/am}
-export FIXLAM=${FIXLAM:-${HOMErrfs}/fix/lam/RRFS_NA_3km}
 
 #-----------------------------------------------------------------------
 # RRFS Make Grid
@@ -31,7 +27,7 @@ case "${WGF}" in
     export RUN="enkfrrfs"
     ;;
   "ensf")
-    export RUN="refs"
+    export RUN="rrfsens"
     ;;
   "firewx")
     export RUN="firewx"
@@ -78,10 +74,10 @@ This is the J-job script for the task that generates grid files.
 #-----------------------------------------------------------------------
 # Define COM directories
 #-----------------------------------------------------------------------
-# Send fix files to COM
-export COMrrfs=${COMrrfs:-$(compath.py rrfs/${rrfs_ver})}
-export firewx_input_dir="${COMrrfs}/firewx_input"
-mkdir -p "${firewx_input_dir}" "${firewx_input_dir}/${PDY}${cyc}"
+# Send cycle generated fix files to COM
+export COMOUT="${COMOUT:-$(compath.py -o ${NET}/${rrfs_ver}/${RUN}.${PDY}/${cyc}/input)}"
+
+mkdir -p ${COMOUT}
 
 # Fire weather nest location from NAM
 export COMINnam=${COMINnam:-$(compath.py nam/${nam_ver})}

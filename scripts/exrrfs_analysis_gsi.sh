@@ -59,6 +59,14 @@ export OB_TYPE=${OB_TYPE}
 #
 ulimit -a
 
+# relocated package definitions
+export FIXam=${FIXam:-${HOMErrfs}/fix/am}
+export FIXLAM=${FIXLAM:-${HOMErrfs}/fix/lam/RRFS_NA_3km}
+export FIX_GSI="${FIXrrfs}/gsi"
+export AIRCRAFT_REJECT="${FIXrrfs}/gsi"
+export SFCOBS_USELIST="${FIXrrfs}/gsi"
+
+
 case $MACHINE in
 #
 "WCOSS2")
@@ -165,26 +173,31 @@ print_info_msg "$VERBOSE" "background type is $BKTYPE"
 #
 if  [[ ${regional_ensemble_option:-1} -eq 5 ]]; then
   ens_nstarthr=$( printf "%02d" ${DA_CYCLE_INTERV} )
-  imem=1
-  ifound=0
-  touch ${DATA}/parallel_copy.sh
-  for hrs in ${CYCL_HRS_HYB_FV3LAM_ENS[@]}; do
-    if [ $HH == ${hrs} ]; then
+  n=${DA_CYCLE_INTERV}
+  SLEEP_TIME=300
+  SLEEP_INT=15
+  SLEEP_LOOP_MAX=`expr $SLEEP_TIME / $SLEEP_INT`
+  ic=0
+  while [[ $n -le 3 ]] ; do  # this check only works for hourly cycle
+      imem=1
+      ifound=0
+      touch ${DATA}/parallel_copy.sh
+      YYYYMMDDHHInterv=$($NDATE -${n} ${YYYYMMDDHH})
+      YYYYMMDDInterv=${YYYYMMDDHHInterv:0:8}
+      HHInterv=${YYYYMMDDHHInterv:8:2}
+      if [ ${n} -eq 1 ]; then
+        for cycl_hrs in ${CYCL_HRS_PRODSTART_ENS[@]}; do
+          if [ $HH == ${cycl_hrs} ]; then
+            HHInterv=${YYYYMMDDHHInterv:8:2}_spinup
+          fi
+         done
+       fi
+      restart_prefix="${YYYYMMDD}.${HH}0000."
       while [[ $imem -le ${NUM_ENS_MEMBERS} ]];do
         memcharv0=$( printf "%03d" $imem )
         memchar=m$( printf "%03d" $imem )
-	prev_YYYYMMDDHHInterv=$($NDATE -${DA_CYCLE_INTERV} ${YYYYMMDDHH})
-	YYYYMMDDInterv=${prev_YYYYMMDDHHInterv:0:8}
-        HHInterv=${prev_YYYYMMDDHHInterv:8:2}
-        restart_prefix="${YYYYMMDD}.${HH}0000."
         bkpathmem=${COMrrfs}/enkfrrfs.${YYYYMMDDInterv}/${HHInterv}/${memchar}/forecast/RESTART
-        if [ ${DO_SPINUP} == "TRUE" ]; then
-          for cycl_hrs in ${CYCL_HRS_PRODSTART_ENS[@]}; do
-           if [ $HH == ${cycl_hrs} ]; then
-             bkpathmem=${COMrrfs}/enkfrrfs.${YYYYMMDDInterv}/${HHInterv}_spinup/${memchar}/forecast/RESTART
-           fi
-          done
-        fi
+
         dynvarfile=${bkpathmem}/${restart_prefix}fv_core.res.tile1.nc
         tracerfile=${bkpathmem}/${restart_prefix}fv_tracer.res.tile1.nc
         phyvarfile=${bkpathmem}/${restart_prefix}phy_data.nc
@@ -200,7 +213,18 @@ if  [[ ${regional_ensemble_option:-1} -eq 5 ]]; then
         fi
         (( imem += 1 ))
       done
-    fi
+      # check if we got enough ensemble forecast
+      if [[ $ifound -eq ${NUM_ENS_MEMBERS} ]]; then
+	      break
+      else
+        [[ -f ${DATA}/parallel_copy.sh ]] && rm -f ${DATA}/parallel_copy.sh
+        if [[ ${n} -eq ${DA_CYCLE_INTERV} ]] && [[ ${ic} -lt $SLEEP_LOOP_MAX ]]; then
+          ic=`expr $ic + 1`
+          sleep $SLEEP_INT
+        else
+          (( n += 1 ))
+        fi
+      fi
   done
 
   if [[ $ifound -ne ${NUM_ENS_MEMBERS} ]] || [[ ${BKTYPE} -eq 1 ]]; then
@@ -461,6 +485,9 @@ if [[ ${GSI_TYPE} == "OBSERVER" || ${anav_type} == "conv" || ${anav_type} == "co
   obs_files_source[${obs_number}]=${obspath_tmp}/${obsfileprefix}.t${HH}${SUBH}z.satwnd.tm00.bufr_d
   obs_files_target[${obs_number}]=satwndbufr
 
+  obs_number=${#obs_files_source[@]}
+  obs_files_source[${obs_number}]=${obspath_tmp}/${obsfileprefix}.t${HH}${SUBH}z.gsbpfl.tm00.bufr_d
+  obs_files_target[${obs_number}]=wbbufr
   obs_number=${#obs_files_source[@]}
   obs_files_source[${obs_number}]=${obspath_tmp}/${obsfileprefix}.t${HH}${SUBH}z.nexrad.tm00.bufr_d
   obs_files_target[${obs_number}]=l2rwbufr
@@ -861,12 +888,14 @@ if [ "${DO_RADDA}" = "TRUE" ]; then
 	  
 #    else
     # For EnVar
-    if [ -r ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_satbias ]; then
-      echo " using satellite bias files from ${SATBIAS_DIR} ${spinup_or_prod_rrfs}.${SAT_TIME}"
-      cpreq -p ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_satbias ./satbias_in
-      cpreq -p ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_satbias_pc ./satbias_pc
-      if [ -r ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_radstat ]; then
-         cpreq -p ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_radstat ./radstat.rrfs
+    #
+
+    if [ -r ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_satbias ]; then
+      echo " using satellite bias files from ${SATBIAS_OUT} ${spinup_or_prod_rrfs}.${SAT_TIME}"
+      cpreq -p ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_satbias ./satbias_in
+      cpreq -p ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_satbias_pc ./satbias_pc
+      if [ -r ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_radstat ]; then
+         cpreq -p ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${SAT_TIME}_radstat ./radstat.rrfs
       fi
 
       break
@@ -875,7 +904,7 @@ if [ "${DO_RADDA}" = "TRUE" ]; then
     satcounter=` expr $satcounter + 1 `
   done
 
-  ## if satbias files (go back to previous 10 days) are not available from ${SATBIAS_DIR}, use satbias files from the ${FIX_GSI} 
+  ## if satbias files (go back to previous 10 days) are not available from ${SATBIAS_OUT}, use satbias files from the ${FIX_GSI} 
   if [ $satcounter -eq $maxcounter ]; then
     # satbias_in
     if [ -r ${FIX_GSI}/rrfs.starting_satbias ]; then
@@ -1088,10 +1117,10 @@ if [ "${DO_GSIDIAG_OFFLINE}" = "FALSE" ]; then
     if [ "${MEM_TYPE}" = "MEAN" ]; then
       if [ "${CYCLE_TYPE}" = "spinup" ]; then
         mkdir -p ${umbrella_analysis_data}/${RUN}_observer_gsi_spinup_ensmean_${envir}_${cyc}
-        cp obs_input.* ${umbrella_analysis_data}/${RUN}_observer_gsi_spinup_ensmean_${envir}_${cyc}/.
+        cpreq obs_input.* ${umbrella_analysis_data}/${RUN}_observer_gsi_spinup_ensmean_${envir}_${cyc}/.
       else
         mkdir -p ${umbrella_analysis_data}/${RUN}_observer_gsi_ensmean_${envir}_${cyc}
-        cp obs_input.* ${umbrella_analysis_data}/${RUN}_observer_gsi_ensmean_${envir}_${cyc}/.
+        cpreq obs_input.* ${umbrella_analysis_data}/${RUN}_observer_gsi_ensmean_${envir}_${cyc}/.
       fi
     fi
   fi
@@ -1110,20 +1139,20 @@ if [ "${DO_GSIDIAG_OFFLINE}" = "FALSE" ]; then
     fi
     if [ ${numfile_cnv} -gt 0 ]; then
       tar -cvzf rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat_nc `cat listcnv`
-      cpreq ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat_nc  ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat
+      cpreq ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat_nc  ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_cnvstat
     fi
     if [ ${numfile_rad} -gt 0 ]; then
       tar -cvzf rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat_nc `cat listrad`
-      cpreq ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat_nc  ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
+      cpreq ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat_nc  ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
     fi
     if [ ${numfile_rad_bin} -gt 0 ]; then
       tar -cvzf rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat `cat listrad_bin`
-      cpreq ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat  ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
+      cpreq ./rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat  ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_radstat
     fi
 
     # For EnVar DA  
-    cpreq ./satbias_out ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias
-    cpreq ./satbias_pc.out ${SATBIAS_DIR}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias_pc
+    cpreq ./satbias_out ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias
+    cpreq ./satbias_pc.out ${SATBIAS_OUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias_pc
     cpreq ./satbias_out ${COMOUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias
     cpreq ./satbias_pc.out ${COMOUT}/rrfs.${spinup_or_prod_rrfs}.${YYYYMMDDHH}_satbias_pc
   fi

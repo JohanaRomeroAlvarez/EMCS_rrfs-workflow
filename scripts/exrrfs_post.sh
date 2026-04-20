@@ -3,6 +3,17 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export FIX_UPP="${FIXrrfs}/upp"
+export FIX_UPP_CRTM="${CRTM_FIX}"
+export CUSTOM_POST_CONFIG_FP="${FIXrrfs}/upp/postxconfig-NT-rrfs.txt"
+export CUSTOM_POST_PARAMS_FP="${FIXrrfs}/upp/params_grib2_tbl_new"
+if [ $WGF == "ensf" ]; then
+  export CUSTOM_POST_CONFIG_FP="${FIXrrfs}/upp/postxconfig-NT-refs.txt"
+fi
+if [ $WGF == "firewx" ]; then
+  export CUSTOM_POST_CONFIG_FP="${FIXrrfs}/upp/postxconfig-NT-firewx.txt"
+fi
+
 #
 #-----------------------------------------------------------------------
 #
@@ -99,6 +110,7 @@ esac
 #
 yyyymmdd=${CDATE:0:8}
 hh=${CDATE:8:2}
+fhr=${FHR:-}
 #
 #-----------------------------------------------------------------------
 #
@@ -154,13 +166,13 @@ cat > itag <<EOF
  grib='grib2'
  DateStr='${post_yyyy}-${post_mm}-${post_dd}_${post_hh}:${post_min}:00'
  MODELNAME='FV3R'
- SUBMODELNAME='FV3R'
+ SUBMODELNAME='RTMA'
  fileNameFlux='${phy_file}'
  fileNameFlat='postxconfig-NT.txt'
 /
 
  &NAMPGB
- KPO=47,PO=1000.,975.,950.,925.,900.,875.,850.,825.,800.,775.,750.,725.,700.,675.,650.,625.,600.,575.,550.,525.,500.,475.,450.,425.,400.,375.,350.,325.,300.,275.,250.,225.,200.,175.,150.,125.,100.,70.,50.,30.,20.,10.,7.,5.,3.,2.,1.,slrutah_on=.true.,gtg_on=.false.,
+ KPO=47,PO=1000.,975.,950.,925.,900.,875.,850.,825.,800.,775.,750.,725.,700.,675.,650.,625.,600.,575.,550.,525.,500.,475.,450.,425.,400.,375.,350.,325.,300.,275.,250.,225.,200.,175.,150.,125.,100.,70.,50.,30.,20.,10.,7.,5.,3.,2.,1.,slrutah_on=.true.,
  /
 EOF
 
@@ -404,10 +416,12 @@ net4=$(echo ${NET:0:4} | tr '[:upper:]' '[:lower:]')
 if [ ${DO_ENSFCST} = "TRUE" ]; then
   prslev=${DATA}/${net4}.t${cyc}z.${mem_num}.prslev.${gridspacing}.f${fhr}.${gridname}.grib2
   natlev=${DATA}/${net4}.t${cyc}z.${mem_num}.natlev.${gridspacing}.f${fhr}.${gridname}.grib2
+  fld2d=${DATA}/${net4}.t${cyc}z.${mem_num}.2dfld.${gridspacing}.f${fhr}.${gridname}.grib2
   nbmfld=${DATA}/${net4}.t${cyc}z.${mem_num}.nbmfld.${gridspacing}.f${fhr}.${gridname}.grib2
 else
   prslev=${DATA}/${net4}.t${cyc}z.prslev.${gridspacing}.f${fhr}.${gridname}.grib2
   natlev=${DATA}/${net4}.t${cyc}z.natlev.${gridspacing}.f${fhr}.${gridname}.grib2
+  fld2d=${DATA}/${net4}.t${cyc}z.2dfld.${gridspacing}.f${fhr}.${gridname}.grib2
   nbmfld=${DATA}/${net4}.t${cyc}z.nbmfld.${gridspacing}.f${fhr}.${gridname}.grib2
 fi
 
@@ -419,13 +433,15 @@ if [ -f PRSLEV.GrbF${post_fhr} ]; then
     exit
   fi
 
-  wgrib2 PRSLEV.GrbF${post_fhr} -set center 7 -grib ${prslev} >>$pgmout 2>>errfile
+  wgrib2 2DFLD.GrbF${post_fhr} -set center 7 -grib ${fld2d} >>$pgmout 2>>errfile
 
   if [ $SUBH_GEN = 1 ]
   then
-    prslev_subh_combo=${DATA}/${net4}.t${cyc}z.prslev.${gridspacing}.subh.f${fhr}.${gridname}.grib2
-    prslev_subh=${DATA}/PRSLEV.GrbF${fhr}.00
-    wgrib2 ${prslev} -not_if 'ave fcst' | grep -F -f ${FIX_UPP}/subh_fields.txt | wgrib2 -i -grib ${prslev_subh}  ${prslev}
+    fld2d_subh_combo=${DATA}/${net4}.t${cyc}z.2dfld.${gridspacing}.subh.f${fhr}.${gridname}.grib2
+    fld2d_subh=${DATA}/PRSLEV.GrbF${fhr}.00
+
+    wgrib2 ${fld2d} -not_if 'ave fcst' | grep -F -f ${FIX_UPP}/subh_fields.txt | wgrib2 -i -grib ${fld2d_subh}  ${fld2d}
+
 
     fhrm1tmp="$((10#$fhr-1))"
     fhrm1=`printf "%02d\n" $fhrm1tmp`
@@ -453,12 +469,12 @@ if [ -f PRSLEV.GrbF${post_fhr} ]; then
       fi
     done
 
-    if [ -e $prslev_subh -a -e $tm15 -a -e $tm30 -a -e $tm45 ]
+    if [ -e $fld2d_subh -a -e $tm15 -a -e $tm30 -a -e $tm45 ]
     then
-      cat $tm45 $tm30 $tm15 $prslev_subh > PRSLEV.GrbF${fhr}_subh
-      wgrib2 PRSLEV.GrbF${fhr}_subh -set center 7 -grib $prslev_subh_combo >> $pgmout 2>> errfile
+      cat $tm45 $tm30 $tm15 $fld2d_subh > 2DFLD.GrbF${fhr}_subh
+      wgrib2 2DFLD.GrbF${fhr}_subh -set center 7 -not max -grib $fld2d_subh_combo >> $pgmout 2>> errfile
     else
-      msg="FATAL ERROR: ABORTING due to missing 15 minute UPP output $prslev_subh $tm15 $tm30 $tm45"
+      msg="FATAL ERROR: ABORTING due to missing 15 minute UPP output $fld2d_subh $tm15 $tm30 $tm45"
       err_exit $msg
     fi 
   fi # SUB_GEN=1 test
@@ -466,10 +482,15 @@ fi # PRSLEV test
 
 # post process 2m dew point for NBM - this is needed for RRFS (det) and REFS (ensf)
 if [ $WGF = "det" ] || [ $WGF = "ensf" ]; then
-  export pgm="dpt2m_post.exe"
+  export pgm="rrfs_util_dpt2m_post.exe"
   . prep_step
 
-  $EXECrrfs/$pgm PRSLEV.GrbF${post_fhr} DPT2M.GrbF${post_fhr} >>$pgmout 2>errfile
+# Use the NATLEV file for deterministic RRFS, and the 2DFLD file for ensemble members
+  if [ $WGF = "det" ]; then
+    $EXECrrfs/$pgm NATLEV.GrbF${post_fhr} DPT2M.GrbF${post_fhr} >>$pgmout 2>errfile
+  elif [ $WGF = "ensf" ]; then
+    $EXECrrfs/$pgm 2DFLD.GrbF${post_fhr} DPT2M.GrbF${post_fhr} >>$pgmout 2>errfile
+  fi
   export err=$?; err_chk
 
   cat NBMFLD.GrbF${post_fhr} DPT2M.GrbF${post_fhr} > NBMFLD_new.GrbF${post_fhr}
@@ -477,6 +498,10 @@ fi
 
 if [ -f NATLEV.GrbF${post_fhr} ]; then
   wgrib2 NATLEV.GrbF${post_fhr} -set center 7 -grib ${natlev} >>$pgmout 2>>errfile
+fi
+
+if [ -f PRSLEV.GrbF${post_fhr} ]; then
+  wgrib2 PRSLEV.GrbF${post_fhr} -set center 7 -not "UGRD:30 m above ground" -grib ${prslev} >>$pgmout 2>>errfile
 fi
 
 if [ -f NBMFLD_new.GrbF${post_fhr} ]; then
@@ -487,7 +512,11 @@ fi
 #   copy post-processed grib2 files to COMOUT
 #-----------------------------------------------------------------------
 #
+
+if [[ $SENDCOM = "YES" ]]; then
+
 cpreq -p ${prslev} ${COMOUT}
+cpreq -p ${fld2d} ${COMOUT}
 # Native level output is disabled for ensemble forecasts after f00
 if [[ -f ${natlev} ]]; then
   cpreq -p ${natlev} ${COMOUT}
@@ -507,42 +536,11 @@ if [ ${PREDEF_GRID_NAME} = "RRFS_FIREWX_1.5km" ]; then
   cpreq -p latlons_corners.txt.f${fhr} ${COMOUT}
 fi
 if [ ${SUBH_GEN} = 1 ]; then
-  cpreq -p ${prslev_subh_combo} ${COMOUT}
+  cpreq -p ${fld2d_subh_combo} ${COMOUT}
 fi
 
-#-----------------------------------------------------------------------
-#   clean forecast umbrella data directory
-#-----------------------------------------------------------------------
-#if [ ${fhr#0} -eq ${FCST_LEN_HRS_CYCLES[$cyc]#0} ]; then
-#  if [ -f ${umbrella_forecast_data}/forecast_${CYCLE_TYPE}_clean.flag ]; then
-#    if [ ${KEEPDATA} == "YES" ]; then
-#      cd ${umbrella_forecast_data}
-#      backup_directory=BACKUP_$$
-#      mkdir ${backup_directory}
-#      mv output RESTART ./${backup_directory}
-#    else
-#      rm -rf ${umbrella_forecast_data}
-#    fi
-#    cd $DATA
-#  fi
-#fi
-#
-#-----------------------------------------------------------------------
-#   clean forecast netcdf files for saving space
-#-----------------------------------------------------------------------
-#
-#if [ ${PREDEF_GRID_NAME} = "RRFS_NA_3km" ]; then
-#  indx="00 06 12 18"
-#  for i in $indx
-#  do
-#    if [ "$cyc" == $i ]; then
-#      echo "long forecast cycle, keep .nc for bufrsnd" 
-#    else
-#      rm -f ${dyn_file}
-#      rm -f ${phy_file}
-#    fi
-#  done
-#fi
+fi #SENDCOM
+
 #
 #-----------------------------------------------------------------------
 #

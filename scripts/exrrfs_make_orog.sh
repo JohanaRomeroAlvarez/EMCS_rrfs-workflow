@@ -3,6 +3,9 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export TOPO_DIR="${FIXrrfs}/fix_orog"
+export FIXam=${FIXam:-${HOMErrfs}/fix/am}
+
 #
 #-----------------------------------------------------------------------
 #
@@ -111,10 +114,10 @@ cpreq -p ${TOPO_DIR}/gmted2010.30sec.int fort.235
 #
 # Set the maximum value of halos in COM
 mosaic_fn="${CRES}${DOT_OR_USCORE}mosaic.halo${NHW}.nc"
-mosaic_fp="${firewx_input_dir}/${PDY}${cyc}/${mosaic_fn}"
+mosaic_fp="${COMrrfs}/${RUN}.${PDY}/${cyc}/input/${mosaic_fn}"
 
 grid_fn=$( get_charvar_from_netcdf "${mosaic_fp}" "gridfiles" )
-grid_fp="${firewx_input_dir}/${PDY}${cyc}/${grid_fn}"
+grid_fp="${COMrrfs}/${RUN}.${PDY}/${cyc}/input/${grid_fn}"
 #
 #-----------------------------------------------------------------------
 #
@@ -167,7 +170,7 @@ cat "${input_redirect_fn}"
 #
 print_info_msg "Starting orography file generation..."
 
-export pgm="orog"
+export pgm="ufs_util_orog"
 . prep_step
 
 $APRUN ${EXECrrfs}/$pgm < "${input_redirect_fn}" >>$pgmout 2>${DATA}/raw_topo/tmp/errfile
@@ -202,13 +205,13 @@ suites=( "FV3_RAP" "FV3_HRRR" "FV3_HRRR_gf" "FV3_GFS_v15_thompson_mynn_lam3km" "
 if [[ ${suites[@]} =~ "${CCPP_PHYS_SUITE}" ]] ; then
   cd ${DATA}/temp_orog_data
   mosaic_fn_gwd="${CRES}${DOT_OR_USCORE}mosaic.halo${NH4}.nc"
-  mosaic_fp_gwd="${firewx_input_dir}/${PDY}${cyc}/${mosaic_fn_gwd}"
+  mosaic_fp_gwd="${COMrrfs}/${RUN}.${PDY}/${cyc}/input/${mosaic_fn_gwd}"
   grid_fn_gwd=$( get_charvar_from_netcdf "${mosaic_fp_gwd}" "gridfiles" )
   export err=$?
   if [ $err -ne 0 ]; then
     err_exit "get_charvar_from_netcdf function failed."
   fi
-  grid_fp_gwd="${firewx_input_dir}/${PDY}${cyc}/${grid_fn_gwd}"
+  grid_fp_gwd="${COMrrfs}/${RUN}.${PDY}/${cyc}/input/${grid_fn_gwd}"
   ls_fn="geo_em.d01.lat-lon.2.5m.HGT_M.nc"
   ss_fn="HGT.Beljaars_filtered.lat-lon.30s_res.nc"
   create_symlink_to_file target="${grid_fp_gwd}" symlink="${DATA}/temp_orog_data/${grid_fn_gwd}" relative="FALSE"
@@ -224,7 +227,7 @@ EOF
 
   print_info_msg "Starting orography file generation..."
 
-  export pgm="orog_gsl"
+  export pgm="ufs_util_orog_gsl"
   . prep_step
 
   ${APRUN} ${EXECrrfs}/$pgm < "${input_redirect_fn}" >>$pgmout 2>${DATA}/raw_topo/tmp/errfile
@@ -233,7 +236,7 @@ EOF
 
   cpreq -p "${CRES}${DOT_OR_USCORE}oro_data_ss.tile${TILE_RGNL}.halo${NH0}.nc" \
            "${CRES}${DOT_OR_USCORE}oro_data_ls.tile${TILE_RGNL}.halo${NH0}.nc" \
-           "${firewx_input_dir}/${PDY}${cyc}"
+           "${COMrrfs}/${RUN}.${PDY}/${cyc}/input/"
 fi
 #
 #-----------------------------------------------------------------------
@@ -357,7 +360,7 @@ cd "${DATA}/filtered_topo"
 # Run the orography filtering executable.
 print_info_msg "Starting filtering of orography..."
 
-export pgm="filter_topo"
+export pgm="ufs_util_filter_topo"
 . prep_step
 
 $APRUN ${EXECrrfs}/$pgm >>$pgmout 2>${DATA}/raw_topo/tmp/errfile
@@ -371,7 +374,7 @@ filtered_orog_fn_orig=$( basename "${filtered_orog_fp}" )
 filtered_orog_fn="${filtered_orog_fn_prefix}.${fn_suffix_with_halo}"
 filtered_orog_fp=$( dirname "${filtered_orog_fp}" )"/${filtered_orog_fn}"
 mv "${filtered_orog_fn_orig}" "${filtered_orog_fn}"
-cpreq -p "${filtered_orog_fp}" "${firewx_input_dir}/${PDY}${cyc}/${CRES}${DOT_OR_USCORE}oro_data.tile${TILE_RGNL}.halo${NHW}.nc"
+cpreq -p "${filtered_orog_fp}" "${COMrrfs}/${RUN}.${PDY}/${cyc}/input/${CRES}${DOT_OR_USCORE}oro_data.tile${TILE_RGNL}.halo${NHW}.nc"
 
 cd ${DATA}
 
@@ -402,7 +405,7 @@ cd "${DATA}/shave_tmp"
 # Create an input namelist file for the shave executable to generate
 # orography files with varios halos from the one with a wide halo.
 #
-export pgm="shave"
+export pgm="ufs_util_shave"
 
 halo_num_list=('0' '4')
 halo_num_list[${#halo_num_list[@]}]="${NHW}"
@@ -420,7 +423,7 @@ for halo_num in "${halo_num_list[@]}"; do
   $APRUN ${EXECrrfs}/$pgm < ${nml_fn} >>$pgmout 2>${DATA}/raw_topo/tmp/errfile
   export err=$?; err_chk
   mv ${DATA}/raw_topo/tmp/errfile ${DATA}/raw_topo/tmp/errfile_shave_${halo_num}
-  cpreq -p ${shaved_fp} ${firewx_input_dir}/${PDY}${cyc}
+  cpreq -p ${shaved_fp} ${COMrrfs}/${RUN}.${PDY}/${cyc}/input/
 done
 
 cd ${DATA}

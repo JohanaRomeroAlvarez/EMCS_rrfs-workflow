@@ -107,6 +107,7 @@ l_fv3reg_filecombined=.false.
 #
 #-----------------------------------------------------------------------
 #
+FIX_GSI="${FIXrrfs}/gsi"
 fixgriddir=${FIX_GSI}/${PREDEF_GRID_NAME}
 
 cpreq -p ${fixgriddir}/fv3_coupler.res    coupler.res
@@ -389,7 +390,7 @@ EOFnml
 #
 #-----------------------------------------------------------------------
 #
-export pgm="enkf.x"
+export pgm="gsi_enkf.x"
 . prep_step
 
 countdiag=$(ls diag*conv* | wc -l)

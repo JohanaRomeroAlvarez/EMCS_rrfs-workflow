@@ -8,14 +8,11 @@ set -xue
 # Specify Package Location
 #-----------------------------------------------------------------------
 export NET='rrfs'
-export MACHINE="WCOSS2"
-export WORKFLOW_MANAGER="ecflow"
 export HOMErrfs=${HOMErrfs:-""}
 export EXECrrfs=${EXECrrfs:-${HOMErrfs}/exec}
 export FIXrrfs=${FIXrrfs:-${HOMErrfs}/fix}
 export PARMrrfs=${PARMrrfs:-${HOMErrfs}/parm}
 export USHrrfs=${USHrrfs:-${HOMErrfs}/ush}
-export FIX_GSI="${FIXrrfs}/gsi"
 
 
 #-----------------------------------------------------------------------
@@ -31,7 +28,7 @@ case "${WGF}" in
     export RUN="enkfrrfs"
     ;;
   "ensf")
-    export RUN="refs"
+    export RUN="rrfsens"
     ;;
   "firewx")
     export RUN="firewx"
@@ -55,7 +52,7 @@ case $WGF in
     COM_WGF="enkfrrfs"
     ;;
   ensf)
-    COM_WGF="refs"
+    COM_WGF="rrfsens"
     ;;
   firewx)
     COM_WGF="firewx"

@@ -3,6 +3,9 @@ set -x
 
 source ${FIXrrfs}/workflow/${WGF}/workflow.conf
 
+export FIX_BUFRSND="${FIXrrfs}/bufrsnd"
+export GEMPAK_FIX=${GEMPAK_FIX:-${FIXrrfs}/gempak/fix}
+
 #
 #-----------------------------------------------------------------------
 #
@@ -83,16 +86,6 @@ Run command has not been specified for this machine:
 
 esac
 #
-#-----------------------------------------------------------------------
-#
-# Get the cycle date and hour (in formats of yyyymmdd and hh, respectively)
-# from CDATE.
-#
-#-----------------------------------------------------------------------
-#
-yyyymmdd=${CDATE:0:8}
-hh=${CDATE:8:2}
-cyc=$hh
 #
 #-----------------------------------------------------------------------
 #
@@ -109,15 +102,22 @@ NSTAT=1950
 cpreq -p ${FIX_BUFRSND}/${PREDEF_GRID_NAME}/rrfs_profdat.${NSTAT} regional_profdat
 
 OUTTYP=netcdf
+export tmmark=tm00
 
 model=FV3S
 
 INCR=01
-FHRLIM=${FHRLIM}
+
+if [ $WGF = "ensf" ]; then
+  FHRLIM=60
+elif [ $WGF = "det" ]; then
+  FHRLIM=84
+else
+  echo "bad WGF definition for BUFRSND job : " $WGF
+  err_exit
+fi
 
 let NFILE=1
-
-PDY=$CDATE
 
 YYYY=`echo $PDY | cut -c1-4`
 MM=`echo $PDY | cut -c5-6`
@@ -140,7 +140,7 @@ if [ -e sndpostdone00.tm00 ]; then
   lasthour=`ls -1rt sndpostdone??.tm00 | tail -1 | cut -c 12-13`
   typeset -Z2 lasthour
 
-  let "fhr=$(( ${fhr#0} + 1 ))"
+  let "fhr=$(( ${lasthour#0} + 1 ))"
   if [ $fhr -le 10 ]; then
      fhr=$(printf "%02d" $fhr)
   fi
@@ -235,7 +235,7 @@ ln -sf $DATA/bufrpost/regional_profdat     fort.19
 ln -sf $DATA/bufrpost/profilm.c1.${tmmark} fort.79
 ln -sf ./itag                              fort.11
 
-  export pgm="rrfs_bufr.exe"
+  export pgm="rrfs_util_rrfs_bufr.exe"
   . prep_step
 
   ${APRUNC} ${EXECrrfs}/$pgm >>$pgmout 2>errfile
@@ -264,8 +264,6 @@ cd $DATA
 # SNDP code
 ########################################################
 
-export pgm=rrfs_sndp
-
 cpreq -p ${FIX_BUFRSND}/regional_sndp.parm.mono $DATA/regional_sndp.parm.mono
 cpreq -p ${FIX_BUFRSND}/regional_bufr.tbl $DATA/regional_bufr.tbl
 
@@ -281,19 +279,34 @@ nlev=65
 FCST_LEN_HRS=$FHRLIM
 echo "$nlev $NSTAT $FCST_LEN_HRS" > itag
 
-export pgm="rrfs_sndp.exe"
+export pgm="rrfs_util_rrfs_sndp.exe"
 . prep_step
 
 ${APRUNS} ${EXECrrfs}/$pgm < itag >>$pgmout 2>errfile
 export err=$?; err_chk
 mv errfile errfile_rrfs_sndp
 
-SENDCOM=YES
+if [[ "${SENDCOM}" = "YES" ]]; then
 
-if [ "${SENDCOM}" = "YES" ]; then
+ if [ ${WGF} = "det" ]; then
   cpreq $DATA/class1.bufr $COMOUT/rrfs.t${cyc}z.class1.bufr
   cpreq $DATA/profilm.c1.${tmmark} ${COMOUT}/rrfs.t${cyc}z.profilm.c1
-fi
+ elif [ ${WGF} = "ensf" ]; then
+  cpreq $DATA/class1.bufr $COMOUT/rrfs.t${cyc}z.m${ENSMEM_INDX}.class1.bufr
+  cpreq $DATA/profilm.c1.${tmmark} ${COMOUT}/rrfs.t${cyc}z.m${ENSMEM_INDX}.profilm.c1
+ else
+  echo "WARNING: running BUFRSND task for $WGF"
+ fi 
+ 
+ if [[ "${SENDDBN}" = "YES" ]]; then
+ if [ ${WGF} = "det" ]; then
+   $DBNROOT/bin/dbn_alert MODEL RRFS_BUFR $job ${COMOUT}/rrfs.t${cyc}z.class1.bufr
+elif [ ${WGF} = "ensf" ]; then
+   $DBNROOT/bin/dbn_alert MODEL RRFS_ENS_BUFR $job ${COMOUT}/rrfs.t${cyc}z.m${ENSMEM_INDX}.class1.bufr
+ fi
+ fi
+
+fi #SENDCOM
 
 # remove bufr file breakout directory in $COMOUT if it exists
 
@@ -320,7 +333,7 @@ export DIRD=${COMOUT}/bufr.${cyc}/bufr
 
 echo "before stnmlist.exe"
 
-export pgm="rrfs_stnmlist.exe"
+export pgm="rrfs_util_rrfs_stnmlist.exe"
 . prep_step
 
 ${APRUNS} ${EXECrrfs}/$pgm < stnmlist_input >>$pgmout 2>errfile
@@ -343,10 +356,19 @@ cpreq -p ${GEMPAK_FIX}/sfrrfs.prm sfrrfs.prm
 mkdir -p $COMOUT/gempak
 
 #  Set input file name.
+ if [ ${WGF} = "det" ]; then
 INFILE=$COMOUT/rrfs.t${cyc}z.class1.bufr
+ elif [  ${WGF} = "ensf" ]; then
+INFILE=$COMOUT/rrfs.t${cyc}z.m${ENSMEM_INDX}.class1.bufr
+ fi
+
 export INFILE
 
+ if [ ${WGF} = "det" ]; then
 outfilbase=rrfs_${PDY}${cyc}
+elif [  ${WGF} = "ensf" ]; then
+outfilbase=rrfs_m${ENSMEM_INDX}_${PDY}${cyc}
+ fi
 
 namsnd << EOF > /dev/null
 SNBUFR   = $INFILE
@@ -359,6 +381,22 @@ r
 
 exit
 EOF
+
+if [[ "${SENDCOM}" = "YES" ]]; then
+  cpreq ${outfilbase}.snd ${COMOUT}/gempak/
+  cpreq ${outfilbase}.sfc* ${COMOUT}/gempak/
+ if [[ "${SENDDBN}" = "YES" ]]; then
+  if [ ${WGF} = "det" ]; then
+    $DBNROOT/bin/dbn_alert MODEL RRFS_DET_BUFR_GEMPAK $job ${COMOUT}/gempak/${outfilbase}.snd
+    $DBNROOT/bin/dbn_alert MODEL RRFS_DET_BUFR_GEMPAK $job ${COMOUT}/gempak/${outfilbase}.sfc
+    $DBNROOT/bin/dbn_alert MODEL RRFS_DET_BUFR_GEMPAK $job ${COMOUT}/gempak/${outfilbase}.sfc_aux
+  elif [  ${WGF} = "ensf" ]; then
+    $DBNROOT/bin/dbn_alert MODEL RRFS_ENS_BUFR_GEMPAK $job ${COMOUT}/gempak/${outfilbase}.snd
+    $DBNROOT/bin/dbn_alert MODEL RRFS_ENS_BUFR_GEMPAK $job ${COMOUT}/gempak/${outfilbase}.sfc
+    $DBNROOT/bin/dbn_alert MODEL RRFS_ENS_BUFR_GEMPAK $job ${COMOUT}/gempak/${outfilbase}.sfc_aux
+  fi
+ fi
+fi
 
 print_info_msg "
 ========================================================================

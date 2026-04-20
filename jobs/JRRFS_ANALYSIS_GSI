@@ -8,18 +8,11 @@ set -xue
 # Specify Package Location
 #-----------------------------------------------------------------------
 export NET='rrfs'
-export MACHINE="WCOSS2"
-export WORKFLOW_MANAGER="ecflow"
 export HOMErrfs=${HOMErrfs:-""}
 export EXECrrfs=${EXECrrfs:-${HOMErrfs}/exec}
 export FIXrrfs=${FIXrrfs:-${HOMErrfs}/fix}
 export PARMrrfs=${PARMrrfs:-${HOMErrfs}/parm}
 export USHrrfs=${USHrrfs:-${HOMErrfs}/ush}
-export FIXam=${FIXam:-${HOMErrfs}/fix/am}
-export FIXLAM=${FIXLAM:-${HOMErrfs}/fix/lam/RRFS_NA_3km}
-export FIX_GSI="${FIXrrfs}/gsi"
-export AIRCRAFT_REJECT="${FIXrrfs}/gsi"
-export SFCOBS_USELIST="${FIXrrfs}/gsi"
 
 #-----------------------------------------------------------------------
 # RRFS Analysis
@@ -34,7 +27,7 @@ case "${WGF}" in
     export RUN="enkfrrfs"
     ;;
   "ensf")
-    export RUN="refs"
+    export RUN="rrfsens"
     ;;
   "firewx")
     export RUN="firewx"
@@ -61,7 +54,6 @@ fi
 
 export CYCLE_TYPE=${CYCLE_TYPE:-prod}
 export COMrrfs=${COMrrfs:-$(compath.py -o ${NET}/${rrfs_ver})}
-export SATBIAS_DIR=$(compath.py -o ${NET}/${rrfs_ver}/satbias)
 
 export COMINgfs=${COMINgfs:-$(compath.py gfs/${gfs_ver})}
 export COMINobsproc=${COMINobsproc:-$(compath.py obsproc/${obsproc_ver})}
@@ -137,7 +129,9 @@ else
     fi
   fi
 fi 
-mkdir -p ${COMOUT}
+
+mkdir -p ${COMOUT} 
+export SATBIAS_OUT=$(compath.py -o ${NET}/${rrfs_ver}/satbias/satbias.${PDY})
 
 #-----------------------------------------------------------------------
 # Define forecast INPUT directories

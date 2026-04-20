@@ -47,7 +47,7 @@ This is the ex-script for the task that saves restart files to nwges.
 #
 yyyymmdd=${CDATE:0:8}
 hh=${CDATE:8:2}
-cyc=$hh
+fhr=${FHR:-}
 
 save_time=$($NDATE ${fhr} ${yyyymmdd}${hh})
 save_yyyy=${save_time:0:4}
@@ -91,9 +91,21 @@ fi
 
 if_save_input=FALSE
 
-if [ -s ${umbrella_forecast_data}/INPUT/gfs_ctrl.nc ]; then
-  cpreq ${umbrella_forecast_data}/INPUT/gfs_ctrl.nc ${COMOUT}/INPUT
-  if_save_input=TRUE
+copy_gfs_ctrl=TRUE
+if [ "${WGF}" = "enkf" ]; then
+  if [[ $((10#$cyc % 2)) -eq 0 ]] && [ ! "${FHR}" = "001" ]; then
+    copy_gfs_ctrl=FALSE
+  fi
+elif [ ${WGF} = "det" ]; then
+  if [ ! "${FHR}" = "001" ]; then
+    copy_gfs_ctrl=FALSE
+  fi  
+fi
+if [[ ${copy_gfs_ctrl} = TRUE ]]; then
+  if [ -s ${umbrella_forecast_data}/INPUT/gfs_ctrl.nc ]; then
+    cpreq ${umbrella_forecast_data}/INPUT/gfs_ctrl.nc ${COMOUT}/INPUT
+    if_save_input=TRUE
+  fi
 fi
 
 if [ -r "${shared_forecast_restart_data}/${restart_prefix}.coupler.res" ]; then
@@ -149,12 +161,12 @@ fi
 #
 if [ "${CYCLE_TYPE}" = "prod" ] && [ "${CYCLE_SUBTYPE}" = "control" ]; then
   if [ "${IO_LAYOUT_Y}" = "1" ]; then
-    cpreq ${COMOUT}/RESTART/${restart_prefix}.sfc_data.nc ${SURFACE_DIR}/${restart_prefix}.sfc_data.nc.${CDATE}
+    cpreq ${COMOUT}/RESTART/${restart_prefix}.sfc_data.nc ${SURFACE_DIR}/surface.${PDY}/${restart_prefix}.sfc_data.nc.${CDATE}
   else
     for ii in ${list_iolayout}
     do
       iii=$(printf %4.4i $ii)
-      cpreq ${COMOUT}/RESTART/${restart_prefix}.sfc_data.nc.${iii} ${SURFACE_DIR}/${restart_prefix}.sfc_data.nc.${CDATE}.${iii}
+      cpreq ${COMOUT}/RESTART/${restart_prefix}.sfc_data.nc.${iii} ${SURFACE_DIR}/surface.${PDY}/${restart_prefix}.sfc_data.nc.${CDATE}.${iii}
     done
   fi
 fi

@@ -46,8 +46,6 @@ RRFS for the specified cycle.
 #-----------------------------------------------------------------------
 #
 
-export ctrlpath=${CRTL_CENTER}
-
 #
 # Set environment
 #
@@ -132,9 +130,6 @@ for imem in  $(seq 1 $nens)
       ln -sf ${bkpath}/fv_core.res.tile1.nc  ./fv3sar_tile1_mem${memberstring}_dynvar
       ln -sf ${bkpath}/fv_tracer.res.tile1.nc   ./fv3sar_tile1_mem${memberstring}_tracer
       ln -sf ${bkpath}/sfc_data.nc  ./fv3sar_tile1_mem${memberstring}_sfcvar
-      #ln -sf ${bkpath}/bk_fv_core.res.tile1.nc  ./fv3sar_tile1_mem${memberstring}_dynvar
-      #ln -sf ${bkpath}/bk_fv_tracer.res.tile1.nc   ./fv3sar_tile1_mem${memberstring}_tracer
-      #ln -sf ${bkpath}/bk_sfc_data.nc  ./fv3sar_tile1_mem${memberstring}_sfcvar
     fi
     ln -sf ${bkpath}/fv_core.res.tile1.nc  ./rec_fv3sar_tile1_mem${memberstring}_dynvar
     ln -sf ${bkpath}/fv_tracer.res.tile1.nc   ./rec_fv3sar_tile1_mem${memberstring}_tracer
@@ -148,16 +143,6 @@ for imem in  $(seq 1 $nens)
 #
 #-----------------------------------------------------------------------
 #
-# Prepare the data structure for ensemble mean
-#
-#-----------------------------------------------------------------------
-#
-#cp -f ./fv3sar_tile1_mem001_dynvar fv3sar_tile1_dynvar
-#cp -f ./fv3sar_tile1_mem001_tracer fv3sar_tile1_tracer
-#cp -f ./fv3sar_tile1_mem001_sfcvar fv3sar_tile1_sfcvar
-#
-#-----------------------------------------------------------------------
-#
 # link the control member 
 #
 #-----------------------------------------------------------------------
@@ -167,10 +152,12 @@ tracerfile_control=${DATAROOT}/rrfs_forecast_${cyc}_${rrfs_ver_2d}_${envir}/det/
 dynvarfile_control_spinup=${DATAROOT}/rrfs_forecast_spinup_${cyc}_${rrfs_ver_2d}_${envir}/det/INPUT/fv_core.res.tile1.nc
 tracerfile_control_spinup=${DATAROOT}/rrfs_forecast_spinup_${cyc}_${rrfs_ver_2d}_${envir}/det/INPUT/fv_tracer.res.tile1.nc
 if [ -r "${dynvarfile_control_spinup}" ] && [ -r "${tracerfile_control_spinup}" ] && [[ ${DO_ENSFCST} != "TRUE" ]] ; then
+  ctrlpath=${DATAROOT}/rrfs_forecast_spinup_${cyc}_${rrfs_ver_2d}_${envir}/det
   ln -sf ${ctrlpath}/INPUT/fv_core.res.tile1.nc  ./control_dynvar
   ln -sf ${ctrlpath}/INPUT/fv_tracer.res.tile1.nc   ./control_tracer
   ln -sf ${ctrlpath}/INPUT/sfc_data.nc  ./control_sfcvar
 elif [ -r "${dynvarfile_control}" ] && [ -r "${tracerfile_control}" ] ; then
+  ctrlpath=${DATAROOT}/rrfs_forecast_${cyc}_${rrfs_ver_2d}_${envir}/det
   ln -sf ${ctrlpath}/INPUT/fv_core.res.tile1.nc  ./control_dynvar
   ln -sf ${ctrlpath}/INPUT/fv_tracer.res.tile1.nc   ./control_tracer
   ln -sf ${ctrlpath}/INPUT/sfc_data.nc  ./control_sfcvar
@@ -210,7 +197,7 @@ EOF
 #-----------------------------------------------------------------------
 #
 echo pwd is `pwd`
-export pgm="ens_mean_recenter_P2DIO.exe"
+export pgm="rrfs_util_ens_mean_recenter_P2DIO.exe"
 
 ${APRUN} ${EXECrrfs}/$pgm < namelist.ens >>$pgmout 2>errfile
 export err=$?; err_chk
